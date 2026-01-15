@@ -1,0 +1,1887 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <title>Scoring Interno</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="/static/css/theme.css" rel="stylesheet">
+    <link href="/static/css/components.css" rel="stylesheet">
+
+    <style>
+        body {
+            background-color: #f8f9fa;
+            padding: 20px;
+        }
+
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .card-header {
+            background-color: #f8f9fa;
+            border-bottom: 1px solid rgba(0,0,0,0.125);
+            font-weight: bold;
+        }
+
+        .form-label {
+            font-weight: 500;
+        }
+
+        .result-card {
+            transition: all 0.3s ease;
+        }
+
+        .score-value {
+            font-size: 3rem;
+            font-weight: bold;
+        }
+
+        .score-label {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .nav-buttons {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+        }
+
+        /* Estilo para el indicador de aprobación */
+        .aprobacion-badge {
+            font-size: 1.2rem;
+            padding: 8px 16px;
+            border-radius: 20px;
+            margin-bottom: 15px;
+            display: inline-block;
+        }
+
+        /* Estilos para las barras de progreso de criterios */
+        .criterio-progress {
+            height: 10px;
+            margin-top: 5px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+        }
+
+        /* Tabla de resultados detallados */
+        .detail-table th {
+            font-weight: 600;
+            background-color: rgba(0,0,0,0.05);
+        }
+
+        .detail-table td {
+            vertical-align: middle;
+        }
+
+        .peso-badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 10px;
+            background-color: #e9ecef;
+        }
+
+        .field-help {
+            background-color: #f8f9fa;
+            border-left: 3px solid #0d6efd;
+            padding: 8px 15px;
+            margin-top: 5px;
+            font-size: 0.85rem;
+            border-radius: 0 5px 5px 0;
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            position: relative;
+            z-index: 1;
+        }
+
+        .field-help i {
+            color: #0d6efd;
+            font-size: 1rem;
+            vertical-align: middle;
+        }
+
+        label.form-label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            .card {
+                margin-bottom: 15px;
+            }
+
+            .score-value {
+                font-size: 2.5rem;
+            }
+
+            .score-label {
+                font-size: 1.2rem;
+            }
+
+            .nav-buttons {
+                position: static;
+                margin-bottom: 15px;
+                display: flex;
+                justify-content: flex-end;
+            }
+
+            .header-title {
+                text-align: center;
+                margin-bottom: 1rem;
+            }
+        }
+        /* Mejoras visuales para Scoring */
+        .card {
+            border-radius: 20px;
+            border: none;
+            overflow: hidden;
+            animation: fadeIn 0.5s ease-out;
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 20px;
+            font-weight: 600;
+        }
+
+        /* ========================================
+           SECCIONES DE CRITERIOS (2025-12-26)
+           ======================================== */
+        .criterios-seccion-form {
+            border: 1px solid var(--bs-border-color);
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            background: var(--bs-body-bg);
+            overflow: hidden;
+        }
+
+        .criterios-seccion-header-form {
+            padding: 12px 16px;
+            color: white;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .criterios-seccion-header-form h6 {
+            margin: 0;
+            font-size: 0.95rem;
+        }
+
+        .criterios-seccion-body-form {
+            padding: 1rem;
+        }
+
+        /* Colores de secciones */
+        .seccion-header-purple { background: linear-gradient(135deg, #6f42c1 0%, #8b5cf6 100%); }
+        .seccion-header-blue { background: linear-gradient(135deg, #0d6efd 0%, #3b82f6 100%); }
+        .seccion-header-green { background: linear-gradient(135deg, #198754 0%, #22c55e 100%); }
+        .seccion-header-orange { background: linear-gradient(135deg, #fd7e14 0%, #f97316 100%); }
+        .seccion-header-red { background: linear-gradient(135deg, #dc3545 0%, #ef4444 100%); }
+        .seccion-header-teal { background: linear-gradient(135deg, #20c997 0%, #14b8a6 100%); }
+        .seccion-header-gray { background: linear-gradient(135deg, #6c757d 0%, #71717a 100%); }
+
+        [data-theme="dark"] .criterios-seccion-form {
+            border-color: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .form-label {
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .field-help {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(102, 126, 234, 0.05) 100%);
+            border-left: 4px solid var(--primary);
+            padding: 10px 16px;
+            border-radius: 8px;
+            margin-top: 8px;
+            font-size: 0.85rem;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .result-card {
+            animation: fadeIn 0.5s ease-out, pulse 2s ease-in-out infinite;
+        }
+
+        .score-value {
+            font-weight: 700;
+            background: var(--bg-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+        }
+
+        .aprobacion-badge {
+            animation: slideIn 0.3s ease-out;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            font-weight: 600;
+            letter-spacing: 1px;
+        }
+
+        .progress {
+            height: 30px;
+            border-radius: 15px;
+            background: var(--bg-secondary);
+            overflow: visible;
+            position: relative;
+        }
+
+        .progress-bar {
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            transition: all 0.5s ease;
+        }
+
+        .table {
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .detail-table th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-size: 0.85rem;
+        }
+
+        .detail-table tbody tr {
+            transition: all 0.2s ease;
+        }
+
+        .detail-table tbody tr:hover {
+            background: var(--bg-secondary);
+            transform: translateX(5px);
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ========================================
+           TEXTO AVAL BLANCO (TEMA CLARO)
+           ======================================== */
+
+        /* Forzar blanco en el mensaje de aval sobre fondo verde - TEMA CLARO */
+        .result-card .mt-3.mb-0 .small.text-center.text-muted {
+            color: rgba(255, 255, 255, 0.9) !important;
+        }
+
+        .result-card .mt-3.mb-0 .small.text-center.text-muted i {
+            color: rgba(255, 255, 255, 0.9) !important;
+        }
+
+        /* Específico para el card de aval dinámico */
+        .result-card .card.border-0.bg-warning .text-muted,
+        .result-card .card.border-0.bg-warning .small {
+            color: white !important;
+        }
+
+        .result-card .card.border-0.bg-warning .text-muted i {
+            color: white !important;
+        }
+
+        /* Mantener normal en tema oscuro */
+        [data-theme="dark"] .result-card .mt-3.mb-0 .small.text-center.text-muted {
+            color: #a0aec0 !important;
+        }
+
+        [data-theme="dark"] .result-card .card.border-0.bg-warning .text-muted {
+            color: #a0aec0 !important;
+        }
+
+        /* ========================================
+           BADGES PORCENTAJE LEGIBLES (TEMA OSCURO)
+           ======================================== */
+
+        /* Badges de peso en desglose detallado - TEXTO NEGRO EN TEMA OSCURO */
+        [data-theme="dark"] .detail-table .peso-badge {
+            background-color: #e9ecef !important;
+            color: #000000 !important;
+            font-weight: 600 !important;
+        }
+
+        /* También aplicar a badges circulares de peso en listado de criterios */
+        [data-theme="dark"] .badge-peso {
+            background-color: #ffffff !important;
+            color: #000000 !important;
+            font-weight: 700 !important;
+            border: 2px solid #e2e8f0 !important;
+        }
+
+        /* Si hay badges dentro de la tabla de resultados */
+        [data-theme="dark"] .detail-table tbody td .badge,
+        [data-theme="dark"] .detail-table tbody td span.badge {
+            background-color: #e9ecef !important;
+            color: #000000 !important;
+        }
+
+        /* Asegurar que el porcentaje sea visible */
+        [data-theme="dark"] .scoring-criteria-row .badge-peso,
+        [data-theme="dark"] .scoring-result .badge-peso {
+            background-color: #f8f9fa !important;
+            color: #1a202c !important;
+            font-weight: 700 !important;
+        }
+
+        /*  Eliminar scroll horizontal en tabla */
+        .detail-table {
+            overflow-x: hidden !important;
+        }
+
+        .detail-table tfoot td {
+            white-space: normal !important;
+            word-wrap: break-word !important;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+            overflow-y: visible;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* Asegurar que la última fila no genere scroll */
+        .detail-table tfoot tr td {
+            padding: 1rem 0.5rem !important;
+        }
+
+        @media (max-width: 576px) {
+            .detail-table tfoot td {
+                font-size: 0.9rem;
+            }
+        }
+
+        /*  Contraste correcto para texto de tasas */
+        .tasas-info-text {
+            color: #4a5568 !important;
+            font-weight: 500;
+        }
+
+        [data-theme="dark"] .tasas-info-text {
+            color: #e2e8f0 !important;
+        }
+        /* Badge "Porcentaje de Aval" legible en tema claro */
+        .text-warning {
+            color: #ffc107 !important;
+        }
+
+        /* Badge en card con fondo que contraste */
+        .card .text-warning.fw-bold {
+            background-color: rgba(255, 193, 7, 0.15);
+            padding: 4px 12px;
+            border-radius: 8px;
+            display: inline-block;
+        }
+
+        /*  Tabla sin scroll horizontal - ajustar anchos */
+        .detail-table {
+            table-layout: fixed;
+            width: 100%;
+        }
+
+        .detail-table th:nth-child(1),
+        .detail-table td:nth-child(1) {
+            width: 40%; /* Criterio - más ancho */
+        }
+
+        .detail-table th:nth-child(2),
+        .detail-table td:nth-child(2) {
+            width: 25%; /* Valor - reducido */
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .detail-table th:nth-child(3),
+        .detail-table td:nth-child(3) {
+            width: 18%; /* Puntos */
+        }
+
+        .detail-table th:nth-child(4),
+        .detail-table td:nth-child(4) {
+            width: 17%; /* Contribución */
+        }
+
+        /* Evitar scroll horizontal */
+        .table-responsive {
+            overflow-x: auto;
+        }
+
+        @media (max-width: 768px) {
+            .detail-table th:nth-child(1),
+            .detail-table td:nth-child(1) {
+                width: 35%;
+            }
+
+            .detail-table th:nth-child(2),
+            .detail-table td:nth-child(2) {
+                width: 30%;
+            }
+        }
+
+        /* Badges .peso-badge legibles en AMBOS temas */
+        .peso-badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 10px;
+            background-color: #e9ecef;
+            color: #212529;
+            font-weight: 600;
+        }
+
+        /* Tema oscuro: Badge peso legible */
+        [data-theme="dark"] .peso-badge {
+            background-color: rgba(255, 255, 255, 0.15) !important;
+            color: #ffffff !important;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* Badges de porcentaje en columna VALOR (tema oscuro) */
+        [data-theme="dark"] .detail-table tbody td {
+            color: #e0e0e0;
+        }
+
+        /* Si hay badges dentro de la columna valor */
+        .detail-table tbody td .badge {
+            background-color: rgba(13, 110, 253, 0.2);
+            color: #0d6efd;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-weight: 600;
+        }
+
+        [data-theme="dark"] .detail-table tbody td .badge {
+            background-color: rgba(93, 156, 236, 0.25);
+            color: #93c5fd;
+        }
+
+        /*  Card de resultado de scoring (fondo y contraste) */
+        [data-theme="dark"] .result-card {
+            background-color: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Text-warning en tema oscuro */
+        [data-theme="dark"] .text-warning {
+            color: #ffc107 !important;
+        }
+
+        [data-theme="dark"] .card .text-warning.fw-bold {
+            background-color: rgba(255, 193, 7, 0.2);
+            color: #ffc107 !important;
+        }
+
+        /* Mejorar contraste de texto en cards tema oscuro */
+        [data-theme="dark"] .small.text-muted {
+            color: #9ca3af !important;
+        }
+
+        [data-theme="dark"] .card-body .fw-bold {
+            color: #f0f0f0;
+        }
+
+        /* ================================================================== */
+        /* ARREGLOS ADICIONALES PARA PROBLEMAS VISUALES ESPECÍFICOS          */
+        /* ================================================================== */
+
+        /* Badge Porcentaje de Aval - Forzar contraste en tema claro */
+        .card .small.text-muted {
+            color: #6c757d !important;
+            font-weight: 500;
+        }
+
+        .card .fw-bold.text-warning {
+            background-color: rgba(255, 193, 7, 0.2) !important;
+            color: #d39e00 !important;
+            padding: 6px 14px !important;
+            border-radius: 8px !important;
+            display: inline-block !important;
+            font-size: 1.1em !important;
+            border: 1px solid rgba(255, 193, 7, 0.3);
+        }
+
+        /* Badge "Porcentaje de Aval" específico - usar selector más específico */
+        div[class*="text-center"] .fw-bold.text-warning {
+            background-color: #fff3cd !important;
+            color: #856404 !important;
+            padding: 8px 16px !important;
+            border: 2px solid #ffc107 !important;
+        }
+
+        [data-theme="dark"] div[class*="text-center"] .fw-bold.text-warning {
+            background-color: rgba(255, 193, 7, 0.25) !important;
+            color: #ffc107 !important;
+            border: 2px solid rgba(255, 193, 7, 0.5) !important;
+        }
+
+        /* Badges en columna VALOR de tabla - peso-badge */
+        .detail-table .peso-badge {
+            background-color: #e3f2fd !important;
+            color: #1565c0 !important;
+            border: 1px solid #90caf9 !important;
+            font-weight: 600 !important;
+            padding: 4px 10px !important;
+        }
+
+        [data-theme="dark"] .detail-table .peso-badge {
+            background-color: rgba(33, 150, 243, 0.2) !important;
+            color: #90caf9 !important;
+            border: 1px solid rgba(144, 202, 249, 0.3) !important;
+        }
+
+        /*  Todos los badges dentro de la tabla */
+        .detail-table tbody td span[class*="badge"],
+        .detail-table tbody td .badge,
+        .detail-table tbody td span.peso-badge {
+            min-width: 45px;
+            text-align: center;
+            display: inline-block;
+        }
+
+        /* Asegurar que valores numéricos en tabla se vean bien */
+        .detail-table tbody td {
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        /*  Evitar texto blanco sobre fondo blanco en badges DE SCORING */
+        /* IMPORTANTE: Solo aplicar a badges DENTRO del contenedor de scoring, no al navbar */
+        .container .peso-badge,
+        .container .detail-table .badge,
+        .container .scoring-result .badge {
+            background-color: #e9ecef !important;
+            color: #212529 !important;
+            font-weight: 600 !important;
+        }
+
+        [data-theme="dark"] .container .peso-badge,
+        [data-theme="dark"] .container .detail-table .badge,
+        [data-theme="dark"] .container .scoring-result .badge {
+            background-color: rgba(255, 255, 255, 0.15) !important;
+            color: #ffffff !important;
+        }
+
+        /* Badges de Bootstrap mantienen sus colores originales */
+        .badge.bg-success { background-color: #198754 !important; color: white !important; }
+        .badge.bg-danger { background-color: #dc3545 !important; color: white !important; }
+        .badge.bg-warning { background-color: #ffc107 !important; color: #000 !important; }
+        .badge.bg-info { background-color: #0dcaf0 !important; color: #000 !important; }
+        .badge.bg-primary { background-color: #0d6efd !important; color: white !important; }
+
+    </style>
+
+    <script>
+        /* ========================================
+           PROTECCIÓN DE SEGURIDAD SUAVIZADA
+           ======================================== */
+        // Advertencia de seguridad sin bloquear funcionalidad
+        document.addEventListener('DOMContentLoaded', function() {
+            if (window.console && window.console.log) {
+                console.log('%c⚠️ ADVERTENCIA DE SEGURIDAD', 'color: red; font-size: 20px; font-weight: bold;');
+                console.log('%cEsta es una herramienta de desarrollador. No pegues código aquí a menos que sepas exactamente lo que hace.', 'color: red; font-size: 14px;');
+            }
+        });
+
+        // Función para NORMALIZACIÓN ROBUSTA DE NÚMEROS MONETARIOS, Evita: contaminar campos de texto
+       function formatCurrencyInput(input) {
+    // Solo aplicar si es campo currency
+    if (!input.dataset.tipo || input.dataset.tipo !== 'currency') {
+        return;
+    }
+
+    // Guardar posición del cursor
+    const start = input.selectionStart;
+    const end = input.selectionEnd;
+    const oldLength = input.value.length;
+
+    // Limpiar TODO excepto dígitos
+    let value = input.value.replace(/[^\d]/g, '');
+
+    // Eliminar ceros a la izquierda
+    value = value.replace(/^0+/, '');
+
+    // Si hay valor, formatear con puntos cada 1000
+    if (value) {
+        input.value = value.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    } else {
+        input.value = '';
+    }
+
+    // Calcular el cambio en longitud para ajustar cursor
+    const newLength = input.value.length;
+    const diff = newLength - oldLength;
+
+    // Restaurar posición del cursor
+    if (input.value.length > 0) {
+        input.selectionStart = Math.max(0, start + diff);
+        input.selectionEnd = Math.max(0, end + diff);
+    }
+}
+
+/**
+ *  PARSEAR NÚMEROS ANTES DE ENVIAR
+ * Uso: parseMoneyValue("1.000.000") => 1000000
+ */
+function parseMoneyValue(value) {
+    if (!value || value.trim() === '') return 0;
+
+    // Eliminar TODOS los separadores de miles (puntos, comas)
+    const cleaned = value.toString().replace(/[\.,\s]/g, '');
+
+    // Convertir a número
+    const parsed = parseInt(cleaned, 10);
+
+    return isNaN(parsed) ? 0 : parsed;
+}
+
+/**
+ *  VALIDAR Y NORMALIZAR ANTES DE SUBMIT
+ */
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('scoringForm');
+
+    // ========================================
+    // IMPORTAR DATOS DESDE CAPACIDAD DE PAGO
+    // ========================================
+    function importarDatosDesdeURL() {
+        const urlParams = new URLSearchParams(window.location.search);
+
+        // Verificar si viene desde capacidad de pago
+        const source = urlParams.get('source');
+        if (source !== 'capacidad_pago') {
+            return; // No hacer nada si no viene de capacidad de pago
+        }
+
+        // Obtener parámetros
+        const ingresosVerificables = urlParams.get('criterio_1753279804789');
+        const ingresosNetos = urlParams.get('ingresos_netos');
+        const relacionDeuda = urlParams.get('relacion_deuda');
+        const mensaje = urlParams.get('mensaje');
+        const datosImportados = urlParams.get('datos_importados');
+
+        console.log('📥 Importando datos desde Capacidad de Pago...');
+        console.log('Ingresos Verificables:', ingresosVerificables);
+        console.log('Ingresos Netos:', ingresosNetos);
+        console.log('Relación Deuda:', relacionDeuda);
+
+        // Rellenar campos si existen
+        let camposRellenados = 0;
+
+        if (ingresosVerificables) {
+            const campoVerificables = document.getElementById('criterio_1753279804789');
+            if (campoVerificables) {
+                // Formatear con puntos de miles
+                const valorFormateado = parseFloat(ingresosVerificables).toLocaleString('es-CO');
+                campoVerificables.value = valorFormateado;
+                camposRellenados++;
+                console.log('✅ Campo "Ingresos Mensuales Verificables" rellenado:', valorFormateado);
+            } else {
+                console.warn('⚠️ Campo "criterio_1753279804789" no encontrado en el formulario');
+            }
+        }
+
+        if (ingresosNetos) {
+            const campoNetos = document.getElementById('ingresos_netos');
+            if (campoNetos) {
+                // Formatear con puntos de miles
+                const valorFormateado = parseFloat(ingresosNetos).toLocaleString('es-CO');
+                campoNetos.value = valorFormateado;
+                camposRellenados++;
+                console.log('✅ Campo "Ingresos Estimado" rellenado:', valorFormateado);
+            } else {
+                console.warn('⚠️ Campo "ingresos_netos" no encontrado en el formulario');
+            }
+        }
+
+        if (relacionDeuda) {
+            const campoRelacion = document.getElementById('relacion_deuda');
+            if (campoRelacion) {
+                campoRelacion.value = relacionDeuda;
+                camposRellenados++;
+                console.log('✅ Campo "Relación Deuda" rellenado:', relacionDeuda);
+            } else {
+                console.warn('⚠️ Campo "relacion_deuda" no encontrado en el formulario');
+            }
+        }
+
+        // Mostrar mensaje de importación si hay datos
+        if (mensaje && camposRellenados > 0) {
+            mostrarMensajeImportacion(mensaje, camposRellenados);
+        }
+    }
+
+    // Función para mostrar mensaje de importación
+    function mostrarMensajeImportacion(mensaje, cantidadCampos) {
+        // Buscar el formulario
+        const formulario = document.getElementById('scoringForm');
+        if (!formulario) return;
+
+        // Crear alerta de importación
+        const alerta = document.createElement('div');
+        alerta.className = 'alert alert-success alert-dismissible fade show mb-4';
+        alerta.setAttribute('role', 'alert');
+        alerta.innerHTML = `
+            <i class="bi bi-check-circle-fill me-2"></i>
+            <strong>Datos importados exitosamente</strong>
+            <p class="mb-0 mt-2">${mensaje}</p>
+            <small class="d-block mt-1">${cantidadCampos} campo(s) rellenado(s) automáticamente. Revise y complete los campos restantes.</small>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+
+        // Insertar antes del formulario
+        formulario.parentNode.insertBefore(alerta, formulario);
+
+        // Auto-ocultar después de 10 segundos
+        setTimeout(() => {
+            alerta.classList.remove('show');
+            setTimeout(() => alerta.remove(), 150);
+        }, 10000);
+
+        console.log('✅ Mensaje de importación mostrado');
+    }
+
+    // Ejecutar importación al cargar la página
+    importarDatosDesdeURL();
+
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            // Normalizar todos los campos currency antes de enviar
+            const currencyInputs = form.querySelectorAll('input[data-tipo="currency"]');
+
+            currencyInputs.forEach(function(input) {
+                // Crear campo oculto con valor parseado
+                const hiddenInput = document.createElement('input');
+                hiddenInput.type = 'hidden';
+                hiddenInput.name = input.name + '_normalized';
+                hiddenInput.value = parseMoneyValue(input.value);
+                form.appendChild(hiddenInput);
+            });
+        });
+    }
+});
+    </script>
+    <!-- Protección de seguridad: Bloquear click derecho en contenido -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Mensaje de advertencia en consola
+            const consoleMessages = [
+                'ADVERTENCIA: Esta es una función de desarrollador. Si alguien te pidió que copies/pegues algo aquí para habilitar una función o "hackear" una cuenta, es un intento de fraude.',
+                'SEGURIDAD: No deberías estar aquí a menos que sepas lo que estás haciendo.',
+            ];
+            console.log('%c¡DETENTE!', 'color: red; font-size: 30px; font-weight: bold;');
+            console.log('%c' + consoleMessages[0], 'color: red; font-size: 14px;');
+            console.log('%c' + consoleMessages[1], 'color: red; font-size: 14px;');
+
+            // Bloquear click derecho EXCEPTO en enlaces del menú
+            document.addEventListener('contextmenu', function(e) {
+                // Permitir click derecho en enlaces (para abrir en nueva pestaña)
+                if (e.target.tagName === 'A' || e.target.closest('a')) {
+                    return true; // Permitir menú contextual en enlaces
+                }
+
+                // Bloquear click derecho en el resto del contenido (seguridad)
+                e.preventDefault();
+                return false;
+            });
+        });
+        // ============================================
+        // DETECTAR SESIÓN EXPIRADA
+        // ============================================
+
+        // Interceptar todos los fetch para detectar sesión expirada
+        const originalFetch = window.fetch;
+        window.fetch = function(...args) {
+            return originalFetch.apply(this, args)
+                .then(response => {
+                    // Si es 401 (no autorizado) o 403 (prohibido), redirigir a login
+                    if (response.status === 401 || response.status === 403) {
+                        console.warn('⚠️ Sesión expirada detectada');
+                        alert('Tu sesión ha expirado. Serás redirigido al login.');
+                        window.location.href = '/login';
+                        return Promise.reject(new Error('Sesión expirada'));
+                    }
+                    return response;
+                })
+                .catch(error => {
+                    console.error('Error en fetch:', error);
+                    throw error;
+                });
+        };
+
+        // Detectar error de caché (ERR_CACHE_MISS)
+        window.addEventListener('pageshow', function(event) {
+            // Si la página viene del caché del navegador (back/forward)
+            if (event.persisted) {
+                console.log('📄 Página cargada desde caché');
+                // Verificar si la sesión sigue activa
+                fetch('/api/capacidad-config', {
+                    method: 'GET',
+                    cache: 'no-cache'
+                }).catch(error => {
+                    console.warn('⚠️ Sesión no válida, recargando...');
+                    window.location.reload();
+                });
+            }
+        });
+
+        // Prevenir envío de formularios si la sesión expiró
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.querySelector('form');
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    // Verificar si hay token CSRF válido
+                    const csrfToken = document.querySelector('input[name="csrf_token"]');
+                    if (!csrfToken || !csrfToken.value) {
+                        e.preventDefault();
+                        alert('Tu sesión ha expirado. Serás redirigido al login.');
+                        window.location.href = '/login';
+                        return false;
+                    }
+                });
+            }
+        });
+    </script>
+</head>
+<body>
+    <!-- Navegación unificada desde partial -->
+    {% include 'partials/navbar_asesor.html' %}
+
+    <div class="container py-4 position-relative">
+
+        <div class="row">
+            <div class="col-md-5">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="bi bi-clipboard-data me-2"></i>Datos del Reporte DataCrédito
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info mb-4">
+                            <i class="bi bi-info-circle-fill me-2"></i>
+                            <strong>Nota:</strong> Complete estos campos con la información que aparece en el reporte DataCrédito del cliente.
+                        </div>
+
+                        <form id="scoringForm" method="post" action="/scoring">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+                            <!-- Campo oculto para persistir identificación tras calcular -->
+                            <input type="hidden"
+                                   id="nombre_cliente_hidden"
+                                   name="nombre_cliente_persist"
+                                   value="{{ form_values.get('nombre_cliente', '') if form_values else '' }}">
+
+                           <!-- Identificación del cliente Con labels descriptivos -->
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">
+                                    <i class="bi bi-person-badge"></i> Identificación del Cliente
+                                </label>
+
+                                <!-- Nombre completo -->
+                                <div class="mb-3">
+                                    <label for="nombre_cliente_nombre" class="form-label">
+                                        Nombre Completo
+                                    </label>
+                                    <input type="text"
+                                           class="form-control"
+                                           id="nombre_cliente_nombre"
+                                           name="nombre_cliente_nombre"
+                                           placeholder="Ej: Carlos Andrés López"
+                                           maxlength="100"
+                                           required
+                                           value="{{ form_values.get('nombre_cliente_nombre', '') if form_values else '' }}">
+                                </div>
+
+                                <!-- Número de cédula -->
+                                <div class="mb-3">
+                                    <label for="nombre_cliente_cedula" class="form-label">
+                                        Número de Cédula o ID
+                                    </label>
+                                    <input type="text"
+                                           class="form-control"
+                                           id="nombre_cliente_cedula"
+                                           name="nombre_cliente_cedula"
+                                           placeholder="Ej: 123456789"
+                                           pattern="[0-9]+"
+                                           title="Solo números"
+                                           maxlength="15"
+                                           required
+                                           value="{{ form_values.get('nombre_cliente_cedula', '') if form_values else '' }}">
+                                </div>
+
+                                <!-- Monto solicitado -->
+                                <div class="mb-3">
+                                    <label for="monto_solicitado" class="form-label">
+                                        Monto Solicitado
+                                    </label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">$</span>
+                                        <input type="text"
+                                               class="form-control currency-input"
+                                               id="monto_solicitado"
+                                               name="monto_solicitado"
+                                               placeholder="Ej: 4.500.000"
+                                               oninput="formatCurrencyInput(this)"
+                                               maxlength="20"
+                                               required
+                                               value="{{ form_values.get('monto_solicitado', '') if form_values else '' }}">
+                                    </div>
+                                    <div class="form-text">
+                                        <i class="bi bi-info-circle"></i> Monto que el cliente desea solicitar
+                                    </div>
+                                </div>
+
+                                <!-- Campo oculto para compatibilidad con backend actual -->
+                                <input type="hidden"
+                                       id="nombre_cliente"
+                                       name="nombre_cliente"
+                                       value="">
+
+                                <div class="form-text text-muted">
+                                    <i class="bi bi-shield-check"></i> Estos datos se guardan para fines de auditoría interna
+                                </div>
+                            </div>
+
+                            <hr class="my-4">
+
+                            <!-- Formulario generado dinámicamente según los criterios configurados -->
+                            <!-- AGRUPADO POR SECCIONES (2025-12-26) - CORREGIDO -->
+
+                            {% if scoring_criterios_agrupados and scoring_criterios_agrupados|length > 0 %}
+                                {% for grupo in scoring_criterios_agrupados %}
+                                    {% set seccion = grupo.seccion %}
+                                    <div class="criterios-seccion-form mb-4">
+                                        <div class="criterios-seccion-header-form seccion-header-{{ seccion.color|default('gray') }}">
+                                            <i class="bi {{ seccion.icono|default('bi-folder') }}"></i>
+                                            <h6>{{ seccion.nombre }}</h6>
+                                        </div>
+                                        <div class="criterios-seccion-body-form">
+                                            {% for criterio in grupo.criterios %}
+                                                {% set criterio_id = criterio.id %}
+
+                                                <div class="mb-4">
+                                                    <label for="{{ criterio_id }}" class="form-label">
+                                                        {% if criterio.nombre %}
+                                                            {{ criterio.nombre }}
+                                                        {% else %}
+                                                            {{ criterio_id }}
+                                                        {% endif %}
+                                                    </label>
+
+                                                    {% set tipo_campo = criterio.tipo_campo if criterio.tipo_campo else 'number' %}
+                                                    {% set placeholder = criterio.placeholder if criterio.placeholder else 'Ingrese valor' %}
+                                                    {% set ayuda = criterio.ayuda if criterio.ayuda else 'Ingrese el valor para este criterio según la documentación disponible' %}
+
+                                                    {% if tipo_campo == 'currency' %}
+                                                    <div class="input-group">
+                                                        <span class="input-group-text">$</span>
+                                                        <input type="text"
+                                                               class="form-control currency-input"
+                                                               id="{{ criterio_id }}"
+                                                               name="{{ criterio_id }}"
+                                                               placeholder="{{ placeholder }}"
+                                                               oninput="formatCurrencyInput(this)"
+                                                               data-tipo="currency"
+                                                               value="{{ form_values[criterio_id] if form_values and criterio_id in form_values else '' }}"
+                                                               required>
+                                                    </div>
+
+                                                    {% elif tipo_campo == 'percentage' %}
+                                                    <div class="input-group">
+                                                        <input type="number"
+                                                               class="form-control"
+                                                               id="{{ criterio_id }}"
+                                                               name="{{ criterio_id }}"
+                                                               placeholder="{{ placeholder }}"
+                                                               {% if criterio.min %}min="{{ criterio.min }}"{% endif %}
+                                                               {% if criterio.max %}max="{{ criterio.max }}"{% endif %}
+                                                               step="0.01"
+                                                               data-tipo="percentage"
+                                                               value="{{ form_values[criterio_id] if form_values and criterio_id in form_values else '' }}"
+                                                               required>
+                                                        <span class="input-group-text">%</span>
+                                                    </div>
+
+                                                    {% elif tipo_campo == 'select' %}
+                                                    <select class="form-select"
+                                                            id="{{ criterio_id }}"
+                                                            name="{{ criterio_id }}"
+                                                            data-tipo="select"
+                                                            required>
+                                                        {% if criterio.opciones %}
+                                                            {% for opcion in criterio.opciones %}
+                                                            <option value="{{ opcion.valor }}"
+                                                                {% if form_values and criterio_id in form_values and form_values[criterio_id]|string == opcion.valor|string %}selected{% endif %}>
+                                                                {{ opcion.texto }}
+                                                            </option>
+                                                            {% endfor %}
+                                                        {% else %}
+                                                            <option value="">Seleccione una opción</option>
+                                                        {% endif %}
+                                                    </select>
+
+                                                    {% elif tipo_campo == 'text' %}
+                                                    <input type="text"
+                                                           class="form-control"
+                                                           id="{{ criterio_id }}"
+                                                           name="{{ criterio_id }}"
+                                                           placeholder="{{ placeholder }}"
+                                                           data-tipo="text"
+                                                           value="{{ form_values[criterio_id] if form_values and criterio_id in form_values else '' }}"
+                                                           required>
+
+                                                    {% else %}
+                                                    <input type="number"
+                                                           class="form-control"
+                                                           id="{{ criterio_id }}"
+                                                           name="{{ criterio_id }}"
+                                                           placeholder="{{ placeholder }}"
+                                                           {% if criterio.min %}min="{{ criterio.min }}"{% endif %}
+                                                           {% if criterio.max %}max="{{ criterio.max }}"{% endif %}
+                                                           step="1"
+                                                           data-tipo="number"
+                                                           value="{{ form_values[criterio_id] if form_values and criterio_id in form_values else '' }}"
+                                                           required>
+                                                    {% endif %}
+
+                                                    <div class="field-help">
+                                                        <i class="bi bi-info-circle me-1"></i>
+                                                        {{ ayuda }}
+                                                    </div>
+                                                </div>
+
+                                                <!-- CAMPO CONDICIONAL: Monto Mora Telcos -->
+                                                {% if criterio_id == 'comportamiento_sectorial' %}
+                                                <div class="mb-4" id="campo_monto_mora_telcos" style="display:none;">
+                                                    <label for="monto_mora_telcos" class="form-label">
+                                                        💰 Monto Total Mora en Telcos
+                                                        <span class="text-danger">*</span>
+                                                    </label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text">$</span>
+                                                        <input type="text"
+                                                               class="form-control"
+                                                               id="monto_mora_telcos"
+                                                               name="monto_mora_telcos"
+                                                               placeholder="Ej: 108000"
+                                                               data-tipo="currency"
+                                                               value="{{ form_values.get('monto_mora_telcos', '') if form_values else '' }}">
+                                                    </div>
+                                                    <div class="field-help">
+                                                        <i class="bi bi-info-circle me-1"></i>
+                                                        Ingrese el monto EXACTO de la mora en Telcos según reporte DataCrédito.
+                                                        <strong>Si supera $200.000 será rechazo automático.</strong>
+                                                    </div>
+                                                </div>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            {% else %}
+                                {# Fallback: mostrar sin secciones si no hay secciones configuradas #}
+                                {% for criterio_id, criterio in scoring_criterios.items() %}
+                                <div class="mb-4">
+                                    <label for="{{ criterio_id }}" class="form-label">
+                                        {% if criterio.nombre %}
+                                            {{ criterio.nombre }}
+                                        {% else %}
+                                            {{ criterio_id }}
+                                        {% endif %}
+                                    </label>
+
+                                    {% set tipo_campo = criterio.tipo_campo if criterio.tipo_campo else 'number' %}
+                                    {% set placeholder = criterio.placeholder if criterio.placeholder else 'Ingrese valor' %}
+                                    {% set ayuda = criterio.ayuda if criterio.ayuda else 'Ingrese el valor para este criterio según la documentación disponible' %}
+
+                                    {% if tipo_campo == 'currency' %}
+                                    <div class="input-group">
+                                        <span class="input-group-text">$</span>
+                                        <input type="text"
+                                               class="form-control currency-input"
+                                               id="{{ criterio_id }}"
+                                               name="{{ criterio_id }}"
+                                               placeholder="{{ placeholder }}"
+                                               oninput="formatCurrencyInput(this)"
+                                               data-tipo="currency"
+                                               value="{{ form_values[criterio_id] if form_values and criterio_id in form_values else '' }}"
+                                               required>
+                                    </div>
+
+                                    {% elif tipo_campo == 'percentage' %}
+                                    <div class="input-group">
+                                        <input type="number"
+                                               class="form-control"
+                                               id="{{ criterio_id }}"
+                                               name="{{ criterio_id }}"
+                                               placeholder="{{ placeholder }}"
+                                               {% if criterio.min %}min="{{ criterio.min }}"{% endif %}
+                                               {% if criterio.max %}max="{{ criterio.max }}"{% endif %}
+                                               step="0.01"
+                                               data-tipo="percentage"
+                                               value="{{ form_values[criterio_id] if form_values and criterio_id in form_values else '' }}"
+                                               required>
+                                        <span class="input-group-text">%</span>
+                                    </div>
+
+                                    {% elif tipo_campo == 'select' %}
+                                    <select class="form-select"
+                                            id="{{ criterio_id }}"
+                                            name="{{ criterio_id }}"
+                                            data-tipo="select"
+                                            required>
+                                        {% if criterio.opciones %}
+                                            {% for opcion in criterio.opciones %}
+                                            <option value="{{ opcion.valor }}"
+                                                {% if form_values and criterio_id in form_values and form_values[criterio_id]|string == opcion.valor|string %}selected{% endif %}>
+                                                {{ opcion.texto }}
+                                            </option>
+                                            {% endfor %}
+                                        {% else %}
+                                            <option value="">Seleccione una opción</option>
+                                        {% endif %}
+                                    </select>
+
+                                    {% elif tipo_campo == 'text' %}
+                                    <input type="text"
+                                           class="form-control"
+                                           id="{{ criterio_id }}"
+                                           name="{{ criterio_id }}"
+                                           placeholder="{{ placeholder }}"
+                                           data-tipo="text"
+                                           value="{{ form_values[criterio_id] if form_values and criterio_id in form_values else '' }}"
+                                           required>
+
+                                    {% else %}
+                                    <input type="number"
+                                           class="form-control"
+                                           id="{{ criterio_id }}"
+                                           name="{{ criterio_id }}"
+                                           placeholder="{{ placeholder }}"
+                                           {% if criterio.min %}min="{{ criterio.min }}"{% endif %}
+                                           {% if criterio.max %}max="{{ criterio.max }}"{% endif %}
+                                           step="1"
+                                           data-tipo="number"
+                                           value="{{ form_values[criterio_id] if form_values and criterio_id in form_values else '' }}"
+                                           required>
+                                    {% endif %}
+
+                                    <div class="field-help">
+                                        <i class="bi bi-info-circle me-1"></i>
+                                        {{ ayuda }}
+                                    </div>
+                                </div>
+
+                                {% if criterio_id == 'comportamiento_sectorial' %}
+                                <div class="mb-4" id="campo_monto_mora_telcos" style="display:none;">
+                                    <label for="monto_mora_telcos" class="form-label">
+                                        💰 Monto Total Mora en Telcos
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">$</span>
+                                        <input type="text"
+                                               class="form-control"
+                                               id="monto_mora_telcos"
+                                               name="monto_mora_telcos"
+                                               placeholder="Ej: 108000"
+                                               data-tipo="currency"
+                                               value="{{ form_values.get('monto_mora_telcos', '') if form_values else '' }}">
+                                    </div>
+                                    <div class="field-help">
+                                        <i class="bi bi-info-circle me-1"></i>
+                                        Ingrese el monto EXACTO de la mora en Telcos.
+                                        <strong>Si supera $200.000 será rechazo automático.</strong>
+                                    </div>
+                                </div>
+                                {% endif %}
+                                {% endfor %}
+                            {% endif %}
+
+                            <!-- TIPO DE CRÉDITO -->
+                            <div class="mb-4">
+                                <label for="tipo_credito" class="form-label">Linea de Crédito a Solicitar</label>
+                                <select class="form-select" id="tipo_credito" name="tipo_credito" required>
+                                    {% for tipo_credito in lineas_credito %}
+                                    <option value="{{ tipo_credito }}" {% if tipo_credito_selected == tipo_credito %}selected{% endif %}>{{ tipo_credito }}</option>
+                                    {% endfor %}
+                                </select>
+                                <div class="field-help">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    Seleccione el tipo de crédito que el cliente desea solicitar
+                                </div>
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary">Calcular Scoring</button>
+                                <button type="button" id="btnLimpiarDatos" class="btn btn-outline-secondary">Limpiar Datos</button>
+                            </div>
+                        </form>
+                        <script>
+                        document.addEventListener('DOMContentLoaded', function() {
+                            const formScoring = document.getElementById('formScoring');
+                            if (formScoring) {
+                                formScoring.addEventListener('submit', async function(e) {
+                                    e.preventDefault();
+                                    const submitBtn = this.querySelector('button[type="submit"]');
+                                    if (submitBtn) submitBtn.disabled = true;
+
+                                    try {
+                                        const response = await fetch('/api/csrf-token');
+                                        const data = await response.json();
+                                        const csrfInput = this.querySelector('input[name="csrf_token"]');
+                                        if (csrfInput && data.csrf_token) csrfInput.value = data.csrf_token;
+                                        this.submit();
+                                    } catch (error) {
+                                        if (submitBtn) submitBtn.disabled = false;
+                                        this.submit();
+                                    }
+                                });
+                            }
+                        });
+                        </script>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-7">
+                {% if scoring_result %}
+                <div id="scoring-result" class="card result-card" style="background-color: {{ scoring_result.color }}; color: {{ scoring_result.text_color }};">
+                    <div class="card-body text-center p-4">
+                        <h5 class="card-title mb-3"><i class="bi bi-graph-up me-2"></i>Resultado de Scoring</h5>
+
+                        <!-- Alertas del sistema -->
+                        {% if scoring_result.alertas_sistema %}
+                        <div class="mb-3">
+                            {% for alerta in scoring_result.alertas_sistema %}
+                            <div class="alert alert-{{ alerta.tipo }} alert-dismissible fade show" style="color: #000;">
+                                <i class="bi bi-{{ alerta.icono }} me-2"></i>
+                                <strong>Alerta del Sistema:</strong> {{ alerta.mensaje }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+
+                        <!-- Mostrar tanto el puntaje normalizado como el original -->
+                        <div class="score-value mb-2">{{ scoring_result.score_normalizado }}</div>
+                        <div class="small mb-2" style="opacity: 0.8;">(puntaje base: {{ scoring_result.score }})</div>
+                        <div class="score-label mb-3">{{ scoring_result.level }}</div>
+
+                        <!-- Indicador de aprobación -->
+                        {% if scoring_result.rechazo_automatico %}
+                        <div class="aprobacion-badge bg-danger">
+                            <i class="bi bi-x-circle-fill me-2"></i>RECHAZADO
+                        </div>
+                        <div class="alert alert-danger mt-2 mb-0">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            <strong>Rechazo automático:</strong> {{ scoring_result.rechazo_automatico }}
+                        </div>
+                        {% elif scoring_result.requiere_comite %}
+                        <div class="aprobacion-badge bg-warning text-dark">
+                            <i class="bi bi-clock-history me-2"></i>PENDIENTE COMITÉ
+                        </div>
+                        <div class="alert alert-warning mt-2 mb-0" style="background-color: rgba(255, 193, 7, 0.15); border: 2px solid #ffc107;">
+                            <i class="bi bi-info-circle-fill me-2"></i>
+                            <strong>Este caso requiere aprobación del Comité de Crédito</strong>
+                        </div>
+                        <div class="alert alert-info mt-2 mb-0">
+                            <p class="mb-2"><strong>Razón:</strong> {{ scoring_result.razon_comite }}</p>
+                            <hr class="my-2">
+                            <p class="mb-0">
+                                <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                                <strong>Acción requerida:</strong><br>
+                                Por favor envíe el reporte de DataCrédito del cliente al administrador para su evaluación manual.
+                                El administrador revisará el caso y emitirá decisión final en las próximas 24-48 horas.
+                            </p>
+                        </div>
+                        {% elif scoring_result.aprobado %}
+                        <div class="aprobacion-badge bg-success">
+                            <i class="bi bi-check-circle-fill me-2"></i>APROBADO
+                        </div>
+
+                      <!-- Nota de degradación por mora Telcos -->
+                        {% if scoring_result.nota_degradacion %}
+                        <div class="alert alert-warning mt-3 mb-0" style="background-color: rgba(255, 193, 7, 0.15); border: 2px solid #ffc107; color: #000;">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            <strong>{{ scoring_result.nota_degradacion }}</strong>
+                        </div>
+                        {% endif %}
+
+                        <!-- Tasas diferenciadas por nivel de riesgo -->
+                        {% if scoring_result.tasas_diferenciadas %}
+                        <div class="mt-3 mb-0">
+                            <div class="card border-0 bg-light">
+                                <div class="card-body p-2">
+                                    <h6 class="card-title mb-2"><i class="bi bi-percent me-1"></i>Tasas aplicables para {{ scoring_result.tipo_credito }}</h6>
+                                    <div class="row g-2">
+                                        <div class="col-6">
+                                            <div class="bg-white p-2 rounded text-center">
+                                                <div class="small text-muted">Tasa Efectiva Anual (E.A.)</div>
+                                                <div class="fw-bold text-primary">{{ scoring_result.tasas_diferenciadas.tasa_anual }}%</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="bg-white p-2 rounded text-center">
+                                                <div class="small text-muted">Tasa Nominal Mensual</div>
+                                                <div class="fw-bold text-primary">{{ "%.4f"|format(scoring_result.tasas_diferenciadas.tasa_mensual) }}%</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="mt-2 small text-center tasas-info-text">
+                                        <i class="bi bi-info-circle me-1"></i>Tasas según el nivel de riesgo: {{ scoring_result.level }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if scoring_result.aval_dinamico %}
+<div class="mt-3 mb-0">
+    <div class="card border-0 bg-warning bg-opacity-10">
+        <div class="card-body p-2">
+            <h6 class="card-title mb-2">
+                <i class="bi bi-shield-check me-1"></i>Aval Dinámico para {{ scoring_result.tipo_credito }}
+            </h6>
+            <div class="row g-1">
+                <div class="col-12">
+                    <div class="bg-white p-2 rounded text-center">
+                        <div class="small text-muted">Porcentaje de Aval</div>
+                        <div class="fw-bold text-warning">{{ "%.2f"|format(scoring_result.aval_dinamico.porcentaje_mostrar) }}%</div>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-2 small text-center text-muted">
+                <i class="bi bi-info-circle me-1"></i>Aval ajustado según el nivel de riesgo: {{ scoring_result.level }}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+                        {% else %}
+                        <div class="aprobacion-badge bg-danger">
+                            <i class="bi bi-x-circle-fill me-2"></i>RECHAZADO
+                        </div>
+                        {% endif %}
+
+                        <!-- Barra de progreso general -->
+<div class="progress mb-2 mt-4" style="height: 25px; border: 2px solid rgba(0,0,0); border-radius: 12px; overflow: hidden;">
+    <div class="progress-bar bg-danger" role="progressbar"
+         style="width: 33.33%; font-size: 16px; font-weight: bold; line-height: 25px; text-align: center; border-right: 1px solid rgba(255,255,255,0.3);"
+         aria-valuenow="33.33" aria-valuemin="0" aria-valuemax="100">
+         Alto riesgo
+    </div>
+    <div class="progress-bar bg-warning" role="progressbar"
+         style="width: 33.33%; font-size: 16px; font-weight: bold; line-height: 25px; text-align: center; border-right: 1px solid rgba(255,255,255,0.3); background-color: #FFD700;"
+         aria-valuenow="33.33" aria-valuemin="0" aria-valuemax="100">
+         Moderado
+    </div>
+    <div class="progress-bar bg-success" role="progressbar"
+         style="width: 33.34%; font-size: 16px; font-weight: bold; line-height: 25px; text-align: center;"
+         aria-valuenow="33.34" aria-valuemin="0" aria-valuemax="100">
+         Bajo
+    </div>
+</div>
+
+                        <!-- Mostrar umbral de aprobación -->
+                        <div class="small mt-2" style="opacity: 0.8;">
+                            Puntaje mínimo para aprobación: {{ scoring_result.puntaje_minimo }}
+                        </div>
+
+                        <!-- Botón para simular crédito con estos datos -->
+                        {% if scoring_result.aprobado and not scoring_result.requiere_comite %}
+                        <!-- Botón solo visible para casos APROBADOS AUTOMÁTICAMENTE -->
+                        <div class="mt-4 d-grid gap-2">
+                            <button type="button" class="btn btn-primary btn-lg" onclick="abrirSimulacionDesdeScoring()">
+                                <i class="bi bi-calculator me-2"></i>💰 Simular Crédito
+                            </button>
+                            <small class="text-center" style="opacity: 0.7;">
+                                Ver cuota mensual con las tasas aplicadas
+                            </small>
+                        </div>
+                        {% endif %}
+                    </div>
+                    </div>
+
+                <!-- Tabla detallada de resultados -->
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <i class="bi bi-list-check me-2"></i>Desglose Detallado
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0 detail-table">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 35%;">Criterio</th>
+                                        <th style="width: 20%;">Valor</th>
+                                        <th style="width: 15%;">Puntos</th>
+                                        <th style="width: 15%;" class="text-end">Cont.</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for criterio in scoring_result.detalles %}
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex flex-wrap align-items-center gap-2">
+                                                <span class="peso-badge">{{ criterio.peso }}%</span>
+                                                <span class="criterio-nombre">{{ criterio.nombre }}</span>
+                                            </div>
+                                            {% if criterio.descripcion %}
+                                            <small class="text-muted d-block mt-1">{{ criterio.descripcion }}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ criterio.valor }}</td>
+                                        <td>{{ criterio.puntos_originales }}</td>
+                                        <td class="fw-bold text-end">{{ "%.1f"|format(criterio.puntos_ponderados) }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                                <tfoot class="table-light fw-bold">
+                                    <tr>
+                                        <td colspan="3" class="text-end">Puntaje Total:</td>
+                                        <td class="text-end">{{ scoring_result.score }}</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Gráfico de barras para criterios principales -->
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <i class="bi bi-bar-chart-fill me-2"></i>Contribución por Criterio
+                    </div>
+                    <div class="card-body">
+                        {% for criterio in scoring_result.detalles %}
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between">
+                                <div>{{ criterio.nombre }}</div>
+                                <div>{{ "%.1f"|format(criterio.puntos_ponderados) }}/{{ "%.1f"|format(criterio.puntos_maximos) }}</div>
+                            </div>
+                            {# Calcular porcentaje considerando rango completo (incluye negativos) #}
+                            {% set rango_total = criterio.puntos_maximos - criterio.puntos_minimos %}
+                            {% set puntos_desde_minimo = criterio.puntos_ponderados - criterio.puntos_minimos %}
+                            {% set porcentaje = (puntos_desde_minimo / rango_total * 100) if rango_total != 0 else 0 %}
+                            {% set porcentaje_safe = [0, [100, porcentaje]|min]|max %}
+                            <div class="progress criterio-progress">
+                                <div class="progress-bar bg-info" role="progressbar"
+                                     style="width: {{ "%.1f"|format(porcentaje_safe) }}%;"
+                                     aria-valuenow="{{ criterio.puntos_ponderados }}"
+                                     aria-valuemin="{{ criterio.puntos_minimos }}"
+                                     aria-valuemax="{{ criterio.puntos_maximos }}">
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% else %}
+                <div class="card bg-light h-100">
+                    <div class="card-body text-center py-5">
+                        <i class="bi bi-calculator display-1 text-muted mb-3"></i>
+                        <h5 class="card-title">Calculadora de Scoring</h5>
+                        <p class="mb-4">Complete el formulario con los datos del cliente extraídos del reporte DataCrédito y haga clic en "Calcular Scoring" para obtener la evaluación de riesgo crediticio.</p>
+                        <hr>
+                        <div class="text-start mt-4">
+                            <h6 class="fw-bold"><i class="bi bi-info-circle-fill me-2"></i>Instrucciones:</h6>
+                            <ol class="ps-3">
+                                <li>Asegúrese de tener el reporte DataCrédito del cliente a la vista</li>
+                                <li>Complete cada campo con el dato exacto del reporte</li>
+                                <li>Los campos que no aparecen en el reporte (estabilidad laboral) pregúntelos directamente al cliente</li>
+                                <li>El resultado le dará un puntaje entre 0-100 y una recomendación de aprobación</li>
+                                <li>Este sistema ayuda a tomar decisiones pero no reemplaza el criterio del asesor</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Script para desplazar a los resultados cuando se cargan -->
+    <script>
+        // Script para desplazar a los resultados cuando se cargan
+        document.addEventListener('DOMContentLoaded', function() {
+
+            //  RECIBIR DATOS DESDE CAPACIDAD DE PAGO
+            const datosCapacidad = sessionStorage.getItem('capacidad_datos');
+
+            if (datosCapacidad) {
+                try {
+                    const datos = JSON.parse(datosCapacidad);
+
+                    // Pre-llenar identificación del cliente
+                    const nombreClienteInput = document.getElementById('nombre_cliente');
+                    if (nombreClienteInput && datos.nombre_cliente) {
+                        nombreClienteInput.value = datos.nombre_cliente;
+
+                        // También actualizar el campo hidden si existe
+                        const hiddenPersist = document.getElementById('nombre_cliente_hidden');
+                        if (hiddenPersist) {
+                            hiddenPersist.value = datos.nombre_cliente;
+                        }
+                    }
+
+                    // Pre-llenar ingresos netos si existe el campo
+                    const ingresoField = document.querySelector('input[name="ingresos_netos"]');
+                    if (ingresoField && datos.ingreso_mensual) {
+                        // Formatear con separadores de miles
+                        const ingresoFormateado = Math.round(datos.ingreso_mensual).toLocaleString('es-CO');
+                        ingresoField.value = ingresoFormateado;
+                    }
+
+                    // Mostrar notificación de integración
+                    const notificacion = document.createElement('div');
+                    notificacion.className = 'alert alert-success alert-dismissible fade show mt-3';
+                    notificacion.innerHTML = `
+                        <i class="bi bi-check-circle-fill me-2"></i>
+                        <strong>Datos importados desde Capacidad de Pago:</strong>
+                        Cliente: ${datos.nombre_cliente || 'N/A'},
+                        Ingreso: $${Math.round(datos.ingreso_mensual || 0).toLocaleString('es-CO')},
+                        Endeudamiento actual: ${(datos.porcentaje_endeudamiento || 0).toFixed(1)}%
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    `;
+
+                    // Insertar notificación al inicio del formulario
+                    const form = document.getElementById('scoringForm');
+                    if (form) {
+                        form.parentElement.insertBefore(notificacion, form);
+
+                        // Auto-ocultar después de 10 segundos
+                        setTimeout(() => {
+                            notificacion.classList.remove('show');
+                            setTimeout(() => notificacion.remove(), 500);
+                        }, 10000);
+                    }
+
+                    // Limpiar sessionStorage después de usar
+                    sessionStorage.removeItem('capacidad_datos');
+
+                    console.log('✅ Datos importados desde Capacidad de Pago:', datos);
+
+                } catch (error) {
+                    console.error('❌ Error al procesar datos de capacidad:', error);
+                    sessionStorage.removeItem('capacidad_datos');
+                }
+            }
+            // Verificar si hay resultados de scoring para mostrar
+            const resultCard = document.querySelector('.result-card');
+            if (resultCard) {
+                // Hay resultados, desplazar a ellos
+                setTimeout(function() {
+                    resultCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 300); // Pequeño retraso para asegurar que todo está cargado
+            }
+
+            // Manejar el envío del formulario para desplazar después de recibir resultados
+            const scoringForm = document.getElementById('scoringForm');
+            if (scoringForm) {
+                scoringForm.addEventListener('submit', function() {
+                    // Combinar nombre + cédula antes de enviar
+                    const nombreInput = document.getElementById('nombre_cliente_nombre');
+                    const cedulaInput = document.getElementById('nombre_cliente_cedula');
+                    const nombreClienteHidden = document.getElementById('nombre_cliente');
+
+                    if (nombreInput && cedulaInput && nombreClienteHidden) {
+                        const nombre = nombreInput.value.trim();
+                        const cedula = cedulaInput.value.trim();
+
+                        // Combinar en formato: "Nombre - CC Cedula"
+                        nombreClienteHidden.value = `${nombre} - CC ${cedula}`;
+                    }
+
+                    // Guardar la posición actual de desplazamiento en sessionStorage
+                    sessionStorage.setItem('formSubmitted', 'true');
+                });
+            }
+        });
+
+        // Comprobar si venimos de un envío de formulario
+        if (sessionStorage.getItem('formSubmitted') === 'true') {
+            // Eliminar la bandera
+            sessionStorage.removeItem('formSubmitted');
+
+            // Verificar si hay resultados y desplazar a ellos
+            const resultCard = document.querySelector('.result-card');
+            if (resultCard) {
+                setTimeout(function() {
+                    resultCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 300);
+            }
+        }
+    </script>
+
+<script>
+    /* ========================================
+       FORMATEO DE NÚMEROS MONETARIOS EN TIEMPO REAL
+       Función GLOBAL accesible desde inline oninput y listeners
+       ======================================== */
+
+    // Función GLOBAL para formatear números (disponible para oninput inline)
+    function formatNumberEnhanced(input) {
+        // Guardar posición del cursor para mantener experiencia fluida
+        const start = input.selectionStart;
+        const end = input.selectionEnd;
+        const oldLength = input.value.length;
+
+        // Limpiar valor: eliminar puntos y caracteres no numéricos
+        let value = input.value.replace(/\./g, '').replace(/\D/g, '').replace(/^0+/, '');
+
+        // Formatear con puntos de miles (1.000.000)
+        if (value) {
+            input.value = value.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        } else {
+            input.value = '';
+        }
+
+        // Restaurar posición del cursor (UX crítica)
+        const newLength = input.value.length;
+        const diff = newLength - oldLength;
+
+        if (input.value.length > 0) {
+            input.selectionStart = Math.max(0, start + diff);
+            input.selectionEnd = Math.max(0, end + diff);
+        }
+    }
+
+    // ALIAS global para compatibilidad con oninput="formatNumber(this)"
+    function formatNumber(input) {
+        formatNumberEnhanced(input);
+    }
+
+    // ALIAS global para compatibilidad con oninput="formatCurrencyInput(this)"
+    function formatCurrencyInput(input) {
+        formatNumberEnhanced(input);
+    }
+
+    // Aplicar formateo a TODOS los campos monetarios al cargar la página
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('🔢 Inicializando formateo monetario...');
+
+        // 1. Formatear campos con data-tipo="currency" (criterios dinámicos)
+        const currencyInputs = document.querySelectorAll('input[data-tipo="currency"]');
+        currencyInputs.forEach(input => {
+            // Remover oninput inline si existe (evitar duplicados)
+            input.removeAttribute('oninput');
+
+            // Agregar listener programático (más robusto)
+            input.addEventListener('input', function() {
+                formatNumberEnhanced(this);
+            });
+
+            // Formatear valor inicial si existe
+            if (input.value) {
+                formatNumberEnhanced(input);
+            }
+
+            console.log(`✅ Formateo aplicado a: ${input.id || input.name}`);
+        });
+
+        // 2. Buscar campo "Coherencia Ingreso vs DANE" (puede tener cualquier ID)
+        const coherenciaInput = document.querySelector('[name="coherencia_ingreso_dane"]');
+        if (coherenciaInput) {
+            coherenciaInput.removeAttribute('oninput');
+
+            coherenciaInput.addEventListener('input', function() {
+                formatNumberEnhanced(this);
+            });
+            coherenciaInput.addEventListener('change', function() {
+                formatNumberEnhanced(this);
+            });
+
+            if (coherenciaInput.value) {
+                formatNumberEnhanced(coherenciaInput);
+            }
+
+            console.log('✅ Formateo aplicado a: coherencia_ingreso_dane');
+        }
+
+        // 3. Asegurar visibilidad de mensajes de ayuda
+        const fieldHelps = document.querySelectorAll('.field-help');
+        fieldHelps.forEach(help => {
+            help.style.display = 'block';
+            help.style.visibility = 'visible';
+            help.style.opacity = '1';
+        });
+
+        console.log(`🎉 Formateo monetario inicializado: ${currencyInputs.length + 2} campos`);
+    });
+
+// ========================================
+// CAMPOS AUTOCALCULADOS READONLY
+// ========================================
+document.addEventListener('DOMContentLoaded', function() {
+    // Hacer readonly los campos que se calculan automáticamente
+    const camposAutocalculados = [
+        'proporcion_saldo_cupo',      // % Utilización Tarjetas
+        'monto_solicitado_ingreso'    // Relación Monto vs Ingreso
+    ];
+
+    camposAutocalculados.forEach(function(fieldId) {
+        const campo = document.getElementById(fieldId);
+        if (campo) {
+            campo.setAttribute('readonly', 'readonly');
+            campo.style.backgroundColor = '#e9ecef';
+            campo.style.cursor = 'not-allowed';
+            campo.title = 'Este campo se calcula automáticamente';
+        }
+    });
+});
+
+
+</script>
+<script>
+    /* ========================================
+       BOTÓN LIMPIAR DATOS
+       ======================================== */
+    // Función para limpiar el formulario - recarga página
+document.addEventListener('DOMContentLoaded', function() {
+    const btnLimpiarDatos = document.getElementById('btnLimpiarDatos');
+    if (btnLimpiarDatos) {
+        btnLimpiarDatos.addEventListener('click', function() {
+            // Solución robusta: recargar página limpia desde servidor
+            // Esto garantiza que todos los criterios dinámicos se regeneran correctamente
+            console.log('🔄 Limpiando formulario - recargando página...');
+            window.location.href = '/scoring';
+        });
+    }
+});
+</script>
+
+<!-- Script de navegación integrado en el partial -->
+<script src="/static/js/theme-unified.js"></script>
+
+<script>
+// Persistir identificación del cliente tras calcular
+document.addEventListener('DOMContentLoaded', function() {
+    const nombreClienteInput = document.getElementById('nombre_cliente');
+    const hiddenPersist = document.getElementById('nombre_cliente_hidden');
+
+    if (nombreClienteInput && hiddenPersist && hiddenPersist.value) {
+        nombreClienteInput.value = hiddenPersist.value;
+    }
+
+    // Sincronizar al escribir
+    if (nombreClienteInput && hiddenPersist) {
+        nombreClienteInput.addEventListener('input', function() {
+            hiddenPersist.value = this.value;
+        });
+    }
+
+    // Restaurar valores de nombre y cédula si existen en el DOM
+    const nombreInput = document.getElementById('nombre_cliente_nombre');
+    const cedulaInput = document.getElementById('nombre_cliente_cedula');
+
+    // Si los campos tienen valores (después de calcular), mantenerlos visibles
+    if (nombreInput && nombreInput.value) {
+        console.log('✅ Nombre persistido:', nombreInput.value);
+    }
+    if (cedulaInput && cedulaInput.value) {
+        console.log('✅ Cédula persistida:', cedulaInput.value);
+    }
+});
+</script>
+
+<!-- Script para mostrar/ocultar campo Monto Mora Telcos -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const selectSectorial = document.getElementById('comportamiento_sectorial');
+    const campoMora = document.getElementById('campo_monto_mora_telcos');
+    const inputMora = document.getElementById('monto_mora_telcos');
+
+    if (selectSectorial && campoMora && inputMora) {
+        // Función para actualizar visibilidad
+        function actualizarVisibilidadMoraTelcos() {
+            if (selectSectorial.value === '1') { // 1 = "Moras solo en Telcos"
+                campoMora.style.display = 'block';
+                inputMora.setAttribute('required', 'required');
+            } else {
+                campoMora.style.display = 'none';
+                inputMora.removeAttribute('required');
+                inputMora.value = ''; // Limpiar valor si no es telcos
+            }
+        }
+
+        // Escuchar cambios en el select
+        selectSectorial.addEventListener('change', actualizarVisibilidadMoraTelcos);
+
+        // Verificar estado inicial (importante para cuando se recarga con valores)
+        actualizarVisibilidadMoraTelcos();
+
+        console.log('✅ Script mora telcos inicializado');
+    } else {
+        console.warn('⚠️ No se encontraron elementos para mora telcos:', {
+            selectSectorial: !!selectSectorial,
+            campoMora: !!campoMora,
+            inputMora: !!inputMora
+        });
+    }
+});
+</script>
+
+<script>
+// Función para abrir simulador desde resultado de scoring
+function abrirSimulacionDesdeScoring() {
+    // Obtener timestamp del caso desde sessionStorage o generar desde datos actuales
+    const timestamp = '{{ scoring_result.timestamp if scoring_result else "" }}';
+
+    if (timestamp) {
+        // Abrir simulador con timestamp del caso
+        const url = `/simulador?caso=${encodeURIComponent(timestamp)}`;
+        window.open(url, '_blank');
+    } else {
+        alert('Error: No se pudo identificar el caso. Intente nuevamente.');
+    }
+}
+</script>
+
+</body>
+</html>
