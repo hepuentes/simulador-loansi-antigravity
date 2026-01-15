@@ -26,15 +26,31 @@ document.addEventListener("DOMContentLoaded", function () {
   // Verificar si estamos en la pestaña de Scoring
   const scoringTab = document.getElementById("Scoring");
   if (scoringTab) {
+    console.log("🔄 Inicializando scoring multi-línea...");
     // Inicializar selector de línea
     initSelectorLineaCredito();
   }
 });
 
 /**
+ * Oculta cualquier spinner de carga inicial
+ */
+function ocultarSpinnerInicial() {
+  const container = document.getElementById("selectorLineaCreditoContainer");
+  if (container) {
+    const spinner = container.querySelector(".spinner-border");
+    if (spinner) {
+      spinner.style.display = "none";
+    }
+  }
+}
+
+/**
  * Inicializa el selector de línea de crédito
  */
 async function initSelectorLineaCredito() {
+  console.log("🔄 Cargando líneas de crédito para scoring...");
+  
   try {
     const response = await fetch("/api/scoring/lineas-credito", {
       method: "GET",
@@ -47,20 +63,72 @@ async function initSelectorLineaCredito() {
     const data = await response.json();
 
     if (data.success) {
+      console.log("✅ Líneas de crédito cargadas:", data.lineas.length);
       lineasCreditoDisponibles = data.lineas;
       renderSelectorLinea(data.lineas);
 
       // Seleccionar primera línea por defecto
       if (data.lineas.length > 0) {
         await seleccionarLineaCredito(data.lineas[0].id, data.lineas[0].nombre);
+      } else {
+        // No hay líneas, mostrar mensaje
+        mostrarMensajeNoLineas();
       }
     } else {
-      console.error("Error cargando líneas:", data.error);
-      mostrarAlertaScoring("Error al cargar líneas de crédito", "danger");
+      console.error("❌ Error cargando líneas:", data.error);
+      mostrarErrorSelector("Error al cargar líneas de crédito: " + data.error);
     }
   } catch (error) {
-    console.error("Error en initSelectorLineaCredito:", error);
-    mostrarAlertaScoring("Error de conexión", "danger");
+    console.error("❌ Error en initSelectorLineaCredito:", error);
+    mostrarErrorSelector("Error de conexión al servidor");
+  }
+}
+
+/**
+ * Muestra un mensaje de error en el selector
+ */
+function mostrarErrorSelector(mensaje) {
+  const container = document.getElementById("selectorLineaCreditoContainer");
+  if (container) {
+    container.innerHTML = `
+      <div class="card mb-4 border-danger">
+        <div class="card-header bg-danger text-white">
+          <i class="bi bi-exclamation-triangle me-2"></i>Error de Configuración
+        </div>
+        <div class="card-body">
+          <div class="alert alert-danger mb-0">
+            <i class="bi bi-x-circle me-2"></i>${mensaje}
+            <br><br>
+            <button class="btn btn-outline-danger btn-sm" onclick="initSelectorLineaCredito()">
+              <i class="bi bi-arrow-clockwise me-1"></i>Reintentar
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+}
+
+/**
+ * Muestra mensaje cuando no hay líneas de crédito
+ */
+function mostrarMensajeNoLineas() {
+  const container = document.getElementById("selectorLineaCreditoContainer");
+  if (container) {
+    container.innerHTML = `
+      <div class="card mb-4 border-warning">
+        <div class="card-header bg-warning text-dark">
+          <i class="bi bi-exclamation-triangle me-2"></i>Sin Líneas de Crédito
+        </div>
+        <div class="card-body">
+          <div class="alert alert-warning mb-0">
+            <i class="bi bi-info-circle me-2"></i>
+            No hay líneas de crédito activas configuradas.
+            Primero debe crear líneas de crédito en la pestaña "Tasas de Crédito".
+          </div>
+        </div>
+      </div>
+    `;
   }
 }
 
@@ -164,10 +232,9 @@ async function onCambioLineaCredito(lineaId) {
  * Selecciona una línea de crédito y carga su configuración
  */
 async function seleccionarLineaCredito(lineaId, nombreLinea) {
+  console.log(`🔄 Cargando configuración de línea ${nombreLinea} (ID: ${lineaId})...`);
+  
   try {
-    // Mostrar loading
-    mostrarLoadingScoring(true);
-
     lineaSeleccionadaId = lineaId;
     lineaSeleccionadaNombre = nombreLinea;
 
@@ -182,6 +249,12 @@ async function seleccionarLineaCredito(lineaId, nombreLinea) {
     if (badge) {
       badge.textContent = nombreLinea;
     }
+    
+    // Actualizar badges en las pestañas
+    const badgeNiveles = document.getElementById("badgeLineaNiveles");
+    const badgeFactores = document.getElementById("badgeLineaFactores");
+    if (badgeNiveles) badgeNiveles.textContent = nombreLinea;
+    if (badgeFactores) badgeFactores.textContent = nombreLinea;
 
     // Cargar configuración de la línea
     const response = await fetch(`/api/scoring/linea/${lineaId}/config`, {
@@ -195,6 +268,7 @@ async function seleccionarLineaCredito(lineaId, nombreLinea) {
     const data = await response.json();
 
     if (data.success) {
+      console.log(`✅ Configuración de ${nombreLinea} cargada correctamente`);
       configScoringLinea = data.config;
 
       // Actualizar info de línea
@@ -206,23 +280,19 @@ async function seleccionarLineaCredito(lineaId, nombreLinea) {
       renderConfigGeneralLinea(data.config.config_general);
 
       mostrarContenidoScoring();
-      mostrarAlertaScoring(
-        `Configuración de ${nombreLinea} cargada`,
-        "success",
-        2000
-      );
+      
+      // Mostrar alerta de éxito breve
+      console.log(`✅ Línea ${nombreLinea} lista para editar`);
     } else {
-      console.error("Error cargando config:", data.error);
+      console.error("❌ Error cargando config:", data.error);
       mostrarAlertaScoring(
         `Error al cargar configuración: ${data.error}`,
         "danger"
       );
     }
   } catch (error) {
-    console.error("Error en seleccionarLineaCredito:", error);
+    console.error("❌ Error en seleccionarLineaCredito:", error);
     mostrarAlertaScoring("Error de conexión", "danger");
-  } finally {
-    mostrarLoadingScoring(false);
   }
 }
 
