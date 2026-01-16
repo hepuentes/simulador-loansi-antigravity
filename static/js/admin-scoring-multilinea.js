@@ -78,7 +78,7 @@ function renderSelectorLinea(lineas) {
         <div class="card mb-4 border-primary">
             <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                 <span><i class="bi bi-box-seam me-2"></i>Línea de Crédito</span>
-                <span class="badge bg-white text-dark fw-bold border" id="badgeLineaActual">Sin seleccionar</span>
+                <span class="badge bg-light text-primary fw-bold border border-primary" id="badgeLineaActual" style="font-size: 0.9rem;">Sin seleccionar</span>
             </div>
             <div class="card-body">
                 <div class="row align-items-end">
@@ -282,7 +282,7 @@ function renderNivelesRiesgoLinea(niveles) {
     <div class="mb-3 d-flex justify-content-between align-items-center">
       <h6 class="mb-0">
         <i class="bi bi-bar-chart-steps me-2"></i>Niveles de Riesgo y Tasas Diferenciadas
-        <span class="badge bg-info ms-2">${lineaSeleccionadaNombre}</span>
+        <span class="badge bg-primary text-white ms-2">${lineaSeleccionadaNombre}</span>
       </h6>
       <button type="button" class="btn btn-sm btn-outline-success" onclick="agregarNivelRiesgoLinea()">
         <i class="bi bi-plus-lg me-1"></i>Agregar nivel
@@ -1110,22 +1110,17 @@ function copiarConfiguracionModal() {
                                 <label class="form-label">Copiar desde:</label>
                                 <select class="form-select" id="selectLineaOrigen">
                                     ${lineasCreditoDisponibles
+                                      .filter((l) => l.id !== lineaSeleccionadaId)
                                       .map(
                                         (l) =>
-                                          `<option value="${l.id}" ${
-                                            l.id === lineaSeleccionadaId
-                                              ? "disabled"
-                                              : ""
-                                          }>
-                                            ${l.nombre}
-                                        </option>`
+                                          `<option value="${l.id}">${l.nombre}</option>`
                                       )
                                       .join("")}
                                 </select>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">Hacia (línea actual):</label>
-                                <input type="text" class="form-control" value="${lineaSeleccionadaNombre}" disabled>
+                                <input type="text" class="form-control bg-light" id="txtLineaDestino" value="${lineaSeleccionadaNombre}" readonly>
                                 <input type="hidden" id="lineaDestinoId" value="${lineaSeleccionadaId}">
                             </div>
                             <div class="form-check">
@@ -1148,18 +1143,17 @@ function copiarConfiguracionModal() {
     document.body.insertAdjacentHTML("beforeend", modalHtml);
     modal = document.getElementById("copiarConfigModal");
   } else {
-    // Actualizar opciones
+    // Actualizar opciones del select origen (excluir línea actual)
     const selectOrigen = document.getElementById("selectLineaOrigen");
     selectOrigen.innerHTML = lineasCreditoDisponibles
+      .filter((l) => l.id !== lineaSeleccionadaId) // Excluir línea actual
       .map(
-        (l) =>
-          `<option value="${l.id}" ${
-            l.id === lineaSeleccionadaId ? "disabled" : ""
-          }>
-                ${l.nombre}
-            </option>`
+        (l) => `<option value="${l.id}">${l.nombre}</option>`
       )
       .join("");
+    
+    // Actualizar campo destino (línea actual)
+    document.getElementById("txtLineaDestino").value = lineaSeleccionadaNombre;
     document.getElementById("lineaDestinoId").value = lineaSeleccionadaId;
   }
 
