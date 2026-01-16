@@ -1088,75 +1088,74 @@ function copiarConfiguracionModal() {
     return;
   }
 
-  // Crear modal si no existe
-  let modal = document.getElementById("copiarConfigModal");
-  if (!modal) {
-    const modalHtml = `
-            <div class="modal fade" id="copiarConfigModal" tabindex="-1">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title">
-                                <i class="bi bi-clipboard-plus me-2"></i>Copiar configuración
-                            </h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                        </div>
-                        <div class="modal-body">
-                            <div class="alert alert-info">
-                                <i class="bi bi-info-circle me-2"></i>
-                                Esta acción copiará niveles de riesgo, factores de rechazo y configuración general.
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Copiar desde:</label>
-                                <select class="form-select" id="selectLineaOrigen">
-                                    ${lineasCreditoDisponibles
-                                      .filter((l) => l.id !== lineaSeleccionadaId)
-                                      .map(
-                                        (l) =>
-                                          `<option value="${l.id}">${l.nombre}</option>`
-                                      )
-                                      .join("")}
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Hacia (línea actual):</label>
-                                <input type="text" class="form-control bg-light" id="txtLineaDestino" value="${lineaSeleccionadaNombre}" readonly>
-                                <input type="hidden" id="lineaDestinoId" value="${lineaSeleccionadaId}">
-                            </div>
-                            <div class="form-check">
-                                <input type="checkbox" class="form-check-input" id="chkIncluirCriterios" checked>
-                                <label class="form-check-label" for="chkIncluirCriterios">
-                                    Incluir criterios y pesos
-                                </label>
-                            </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                            <button type="button" class="btn btn-primary" onclick="ejecutarCopiaConfig()">
-                                <i class="bi bi-clipboard-check me-1"></i>Copiar
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-    document.body.insertAdjacentHTML("beforeend", modalHtml);
-    modal = document.getElementById("copiarConfigModal");
-  } else {
-    // Actualizar opciones del select origen (excluir línea actual)
-    const selectOrigen = document.getElementById("selectLineaOrigen");
-    selectOrigen.innerHTML = lineasCreditoDisponibles
-      .filter((l) => l.id !== lineaSeleccionadaId) // Excluir línea actual
-      .map(
-        (l) => `<option value="${l.id}">${l.nombre}</option>`
-      )
-      .join("");
-    
-    // Actualizar campo destino (línea actual)
-    document.getElementById("txtLineaDestino").value = lineaSeleccionadaNombre;
-    document.getElementById("lineaDestinoId").value = lineaSeleccionadaId;
+  if (!lineaSeleccionadaId || !lineaSeleccionadaNombre) {
+    mostrarAlertaScoring("Primero seleccione una línea de crédito destino", "warning");
+    return;
   }
 
+  // Eliminar modal existente para recrearlo con datos frescos
+  const modalExistente = document.getElementById("copiarConfigModal");
+  if (modalExistente) {
+    // Cerrar modal si está abierto
+    const bsModal = bootstrap.Modal.getInstance(modalExistente);
+    if (bsModal) bsModal.hide();
+    modalExistente.remove();
+  }
+
+  // Crear opciones del select (excluir línea actual)
+  const opcionesOrigen = lineasCreditoDisponibles
+    .filter((l) => l.id !== lineaSeleccionadaId)
+    .map((l) => `<option value="${l.id}">${l.nombre}</option>`)
+    .join("");
+
+  const modalHtml = `
+    <div class="modal fade" id="copiarConfigModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header bg-primary text-white">
+            <h5 class="modal-title">
+              <i class="bi bi-clipboard-plus me-2"></i>Copiar configuración
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div class="alert alert-info">
+              <i class="bi bi-info-circle me-2"></i>
+              Esta acción copiará niveles de riesgo, factores de rechazo y configuración general.
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Copiar desde:</label>
+              <select class="form-select" id="selectLineaOrigen">
+                ${opcionesOrigen}
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Hacia (línea actual):</label>
+              <input type="text" class="form-control bg-warning text-dark fw-bold" 
+                     value="${lineaSeleccionadaNombre}" readonly>
+              <input type="hidden" id="lineaDestinoId" value="${lineaSeleccionadaId}">
+              <small class="text-muted">La configuración se copiará a esta línea</small>
+            </div>
+            <div class="form-check">
+              <input type="checkbox" class="form-check-input" id="chkIncluirCriterios" checked>
+              <label class="form-check-label" for="chkIncluirCriterios">
+                Incluir criterios y pesos
+              </label>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="button" class="btn btn-primary" onclick="ejecutarCopiaConfig()">
+              <i class="bi bi-clipboard-check me-1"></i>Copiar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  document.body.insertAdjacentHTML("beforeend", modalHtml);
+  const modal = document.getElementById("copiarConfigModal");
   new bootstrap.Modal(modal).show();
 }
 
@@ -1242,13 +1241,66 @@ function agregarCriterioLinea() {
     return;
   }
 
-  // Mostrar mensaje informativo
-  mostrarAlertaScoring(
-    "Los criterios de scoring se comparten entre todas las líneas. " +
-      "Configure niveles de riesgo y factores de rechazo específicos para cada línea.",
-    "info",
-    6000
-  );
+  // Mostrar modal informativo con opciones
+  const modalExistente = document.getElementById("infoCriteriosModal");
+  if (modalExistente) modalExistente.remove();
+
+  const modalHtml = `
+    <div class="modal fade" id="infoCriteriosModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header bg-info text-white">
+            <h5 class="modal-title">
+              <i class="bi bi-info-circle me-2"></i>Información sobre Criterios
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div class="alert alert-warning mb-3">
+              <i class="bi bi-exclamation-triangle me-2"></i>
+              <strong>Criterios Compartidos</strong>
+            </div>
+            <p>Los <strong>criterios de scoring</strong> (como edad, ingresos, score datacredito, etc.) 
+            se aplican de forma <strong>global</strong> a todas las líneas de crédito.</p>
+            
+            <p>Lo que diferencia cada línea son:</p>
+            <ul>
+              <li><strong>Niveles de Riesgo</strong>: Rangos de score y tasas específicas</li>
+              <li><strong>Factores de Rechazo</strong>: Condiciones automáticas de rechazo</li>
+              <li><strong>Configuración General</strong>: Parámetros específicos de la línea</li>
+            </ul>
+            
+            <p class="mb-0">Use las pestañas anteriores para configurar estos elementos para <strong>${lineaSeleccionadaNombre}</strong>.</p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Entendido</button>
+            <button type="button" class="btn btn-primary" onclick="irANivelesRiesgo()">
+              <i class="bi bi-bar-chart-steps me-1"></i>Ir a Niveles de Riesgo
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  document.body.insertAdjacentHTML("beforeend", modalHtml);
+  new bootstrap.Modal(document.getElementById("infoCriteriosModal")).show();
+}
+
+/**
+ * Navega a la pestaña de niveles de riesgo
+ */
+function irANivelesRiesgo() {
+  const modal = document.getElementById("infoCriteriosModal");
+  if (modal) {
+    bootstrap.Modal.getInstance(modal).hide();
+  }
+  
+  // Activar pestaña de niveles de riesgo
+  const tabNiveles = document.getElementById("niveles-linea-tab");
+  if (tabNiveles) {
+    tabNiveles.click();
+  }
 }
 
 /**
