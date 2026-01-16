@@ -63,6 +63,7 @@ from db_helpers_scoring_linea import (
     cargar_scoring_por_linea,
     invalidar_cache_scoring_linea,
     verificar_tablas_scoring_linea,
+    crear_config_scoring_linea_defecto,
 )
 
 # ============================================
@@ -139,6 +140,47 @@ def log_db_operation(operation, details="", level="INFO"):
 # ============================================
 # FUNCIONES HELPER SQLITE - DB OPERATIONS
 # ============================================
+
+
+def registrar_auditoria(usuario, accion, descripcion, detalles=None):
+    """
+    Registra una acción de auditoría en el sistema.
+    Por ahora hace logging, pero puede extenderse para guardar en BD.
+    
+    Args:
+        usuario (str): Usuario que realizó la acción
+        accion (str): Tipo de acción (ej: "SCORING_CONFIG_UPDATE")
+        descripcion (str): Descripción de la acción
+        detalles (str): Detalles adicionales en formato JSON (opcional)
+    """
+    try:
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        log_message = f"📝 AUDITORÍA [{timestamp}] Usuario: {usuario} | Acción: {accion} | {descripcion}"
+        if detalles:
+            log_message += f" | Detalles: {detalles}"
+        print(log_message)
+        
+        # Opcionalmente, guardar en tabla de auditoría si existe
+        try:
+            db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "loansi.db")
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+            
+            # Verificar si existe la tabla de auditoría
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='auditoria'")
+            if cursor.fetchone():
+                cursor.execute("""
+                    INSERT INTO auditoria (usuario, accion, descripcion, detalles, fecha)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (usuario, accion, descripcion, detalles, timestamp))
+                conn.commit()
+            conn.close()
+        except Exception as e:
+            # Si falla guardar en BD, solo loggeamos (no es crítico)
+            pass
+            
+    except Exception as e:
+        print(f"⚠️ Error en auditoría: {e}")
 
 
 def leer_evaluaciones_db():
@@ -3204,24 +3246,23 @@ def obtener_aval_dinamico(
 def obtener_tasa_por_nivel_riesgo(nivel_riesgo, linea_credito):
     """
     Obtiene las tasas de interés según el nivel de riesgo y línea de crédito.
+    
+    ACTUALIZADO: Ahora usa primero el scoring multi-línea, con fallback al sistema antiguo.
 
     Parámetros:
-        nivel_riesgo: str - "Alto riesgo", "Riesgo moderado", "Bajo riesgo"
+        nivel_riesgo: str - "Alto Riesgo", "Moderado", "Bajo Riesgo", etc.
         linea_credito: str - "LoansiFlex", "LoansiMoto", etc.
 
     Retorna:
         dict - {
             'tasa_anual': float,
             'tasa_mensual': float,
-            'color': str
+            'color': str,
+            'aval_porcentaje': float (opcional)
         }
         o None si no se encuentra
     """
     try:
-        # Cargar scoring.json
-        scoring_config = cargar_configuracion_scoring()
-        niveles_riesgo = scoring_config.get("niveles_riesgo", [])
-
         if not nivel_riesgo or not linea_credito:
             print(
                 f"⚠️ obtener_tasa_por_nivel_riesgo: Parámetros inválidos (nivel={nivel_riesgo}, linea={linea_credito})"
@@ -3231,7 +3272,50 @@ def obtener_tasa_por_nivel_riesgo(nivel_riesgo, linea_credito):
         # Normalizar nombre del nivel para comparación
         nivel_norm = nivel_riesgo.lower().strip()
 
-        # Buscar el nivel de riesgo
+        # ============================================
+        # PASO 1: Intentar obtener de scoring multi-línea
+        # ============================================
+        try:
+            scoring_linea = cargar_scoring_por_linea(linea_credito)
+            if scoring_linea and scoring_linea.get("niveles_riesgo"):
+                niveles = scoring_linea["niveles_riesgo"]
+                
+                for nivel in niveles:
+                    nombre_nivel = nivel.get("nombre", "").lower().strip()
+                    
+                    # Comparación flexible
+                    if (
+                        nombre_nivel == nivel_norm
+                        or ("alto" in nombre_nivel and "alto" in nivel_norm)
+                        or ("moderado" in nombre_nivel and "moderado" in nivel_norm)
+                        or ("bajo" in nombre_nivel and "bajo" in nivel_norm)
+                        or ("rescate" in nombre_nivel and "rescate" in nivel_norm)
+                    ):
+                        # El scoring multi-línea tiene tasa_ea directamente
+                        tasa_ea = nivel.get("tasa_ea", 25)
+                        tasa_mensual = nivel.get("tasa_nominal_mensual", 1.88)
+                        
+                        print(
+                            f"✅ Tasas multi-línea encontradas para {linea_credito}/{nombre_nivel}: "
+                            f"{tasa_ea}% EA / {tasa_mensual}% mensual"
+                        )
+                        return {
+                            "tasa_anual": tasa_ea,
+                            "tasa_mensual": tasa_mensual,
+                            "color": nivel.get("color", "#999999"),
+                            "aval_porcentaje": nivel.get("aval_porcentaje", 0.10),
+                        }
+                
+                print(f"⚠️ Nivel '{nivel_riesgo}' no encontrado en scoring multi-línea de {linea_credito}")
+        except Exception as e:
+            print(f"⚠️ Error consultando scoring multi-línea: {e}")
+
+        # ============================================
+        # PASO 2: Fallback al sistema antiguo (tasas_por_producto)
+        # ============================================
+        scoring_config = cargar_configuracion_scoring()
+        niveles_riesgo = scoring_config.get("niveles_riesgo", [])
+
         for nivel in niveles_riesgo:
             nombre_nivel = nivel.get("nombre", "").lower().strip()
 
@@ -3242,33 +3326,26 @@ def obtener_tasa_por_nivel_riesgo(nivel_riesgo, linea_credito):
                 or ("moderado" in nombre_nivel and "moderado" in nivel_norm)
                 or ("bajo" in nombre_nivel and "bajo" in nivel_norm)
             ):
-
-                # Buscar tasas para la línea de crédito específica
+                # Buscar tasas para la línea de crédito específica (formato antiguo)
                 tasas_por_producto = nivel.get("tasas_por_producto", {})
 
                 if linea_credito in tasas_por_producto:
                     tasas = tasas_por_producto[linea_credito]
                     print(
-                        f"✅ Tasas encontradas: {tasas['tasa_anual']}% EA / {tasas['tasa_mensual']}% mensual"
+                        f"✅ Tasas (legacy) encontradas: {tasas['tasa_anual']}% EA / {tasas['tasa_mensual']}% mensual"
                     )
                     return {
                         "tasa_anual": tasas["tasa_anual"],
                         "tasa_mensual": tasas["tasa_mensual"],
                         "color": nivel.get("color", "#999999"),
                     }
-                else:
-                    print(
-                        f"⚠️ Línea '{linea_credito}' no encontrada en tasas_por_producto del nivel '{nombre_nivel}'"
-                    )
-                    return None
 
-        print(f"⚠️ Nivel de riesgo '{nivel_riesgo}' no encontrado en configuración")
+        print(f"⚠️ Nivel de riesgo '{nivel_riesgo}' no encontrado en ninguna configuración")
         return None
 
     except Exception as e:
         print(f"❌ ERROR en obtener_tasa_por_nivel_riesgo: {str(e)}")
         import traceback
-
         traceback.print_exc()
         return None
 
@@ -4374,31 +4451,49 @@ def crear_nueva_linea_credito():
             flash("Error al guardar la configuración principal")
             return redirect(url_for("admin") + "#TasasCredito")
 
+        # ============================================
+        # CREAR CONFIGURACIÓN DE SCORING MULTI-LÍNEA
+        # ============================================
         try:
-            scoring_config = cargar_configuracion_scoring()
-
-            for nivel in scoring_config.get("niveles_riesgo", []):
-                if "tasas_por_producto" not in nivel:
-                    nivel["tasas_por_producto"] = {}
-
-                nivel["tasas_por_producto"][nombre_linea] = {
-                    "tasa_anual": tasa_anual,
-                    "tasa_mensual": round(tasa_mensual_porcentaje, 4),
-                }
-
-            if not guardar_configuracion_scoring(scoring_config):
+            # Obtener el ID de la línea recién creada
+            db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "loansi.db")
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+            cursor.execute("SELECT id FROM lineas_credito WHERE nombre = ?", (nombre_linea,))
+            linea_row = cursor.fetchone()
+            conn.close()
+            
+            if linea_row:
+                linea_id = linea_row[0]
+                print(f"📦 Creando configuración de scoring para nueva línea: {nombre_linea} (ID: {linea_id})")
+                
+                # Crear configuración de scoring multi-línea por defecto
+                if crear_config_scoring_linea_defecto(linea_id, tasa_anual):
+                    print(f"✅ Configuración de scoring creada para {nombre_linea}")
+                else:
+                    flash(
+                        "Advertencia: La línea se creó pero hubo un error al crear el scoring automático",
+                        "warning"
+                    )
+            else:
+                print(f"⚠️ No se encontró ID para la línea {nombre_linea}")
                 flash(
-                    "Advertencia: La línea se creó pero no se pudo actualizar el scoring"
+                    "Advertencia: La línea se creó pero no se pudo configurar el scoring automático",
+                    "warning"
                 )
 
         except Exception as e:
-            print(f"Error al actualizar scoring: {str(e)}")
+            print(f"Error al crear scoring automático: {str(e)}")
+            import traceback
+            traceback.print_exc()
             flash(
-                "Advertencia: La línea se creó pero hubo un error al actualizar el scoring"
+                "Advertencia: La línea se creó pero hubo un error al configurar el scoring",
+                "warning"
             )
 
         flash(
-            f"Línea de crédito '{nombre_linea}' creada exitosamente y configurada en todas las secciones"
+            f"Línea de crédito '{nombre_linea}' creada exitosamente con scoring configurado automáticamente",
+            "success"
         )
         return redirect(url_for("admin") + "#TasasCredito")
 

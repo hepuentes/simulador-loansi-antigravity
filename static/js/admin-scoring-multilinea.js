@@ -146,7 +146,7 @@ function renderSelectorLinea(lineas) {
         <div class="card mb-4 border-primary">
             <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                 <span><i class="bi bi-box-seam me-2"></i>Línea de Crédito</span>
-                <span class="badge bg-light text-primary" id="badgeLineaActual">Sin seleccionar</span>
+                <span class="badge bg-light text-primary fw-bold border border-primary" id="badgeLineaActual" style="font-size: 0.9rem;">Sin seleccionar</span>
             </div>
             <div class="card-body">
                 <div class="row align-items-end">
@@ -347,8 +347,21 @@ function renderNivelesRiesgoLinea(niveles) {
   const container = document.getElementById("nivelesRiesgoLineaContainer");
   if (!container) return;
 
+  // Header con botón agregar
+  let html = `
+    <div class="mb-3 d-flex justify-content-between align-items-center">
+      <h6 class="mb-0">
+        <i class="bi bi-bar-chart-steps me-2"></i>Niveles de Riesgo y Tasas Diferenciadas
+        <span class="badge bg-primary text-white ms-2">${lineaSeleccionadaNombre}</span>
+      </h6>
+      <button type="button" class="btn btn-sm btn-outline-success" onclick="agregarNivelRiesgoLinea()">
+        <i class="bi bi-plus-lg me-1"></i>Agregar nivel
+      </button>
+    </div>
+  `;
+
   if (!niveles || niveles.length === 0) {
-    container.innerHTML = `
+    html += `
             <div class="alert alert-warning">
                 <i class="bi bi-exclamation-triangle me-2"></i>
                 No hay niveles de riesgo configurados para esta línea.
@@ -358,10 +371,11 @@ function renderNivelesRiesgoLinea(niveles) {
                 </button>
             </div>
         `;
+    container.innerHTML = html;
     return;
   }
 
-  let html = `<div class="row">`;
+  html += `<div class="row">`;
 
   niveles.forEach((nivel, index) => {
     html += `
@@ -369,13 +383,17 @@ function renderNivelesRiesgoLinea(niveles) {
                 <div class="card h-100" style="border-top: 4px solid ${
                   nivel.color
                 };">
-                    <div class="card-header" style="background-color: ${
+                    <div class="card-header d-flex justify-content-between align-items-center" style="background-color: ${
                       nivel.color
                     }20;">
-                        <input type="text" class="form-control form-control-sm fw-bold"
+                        <input type="text" class="form-control form-control-sm fw-bold flex-grow-1 me-2"
                                value="${nivel.nombre}"
                                onchange="actualizarNivelLinea(${index}, 'nombre', this.value)"
                                style="background: transparent; border: none;">
+                        <button type="button" class="btn btn-sm btn-outline-danger" 
+                                onclick="eliminarNivelRiesgoLinea(${index})" title="Eliminar nivel">
+                            <i class="bi bi-trash"></i>
+                        </button>
                     </div>
                     <div class="card-body">
                         <div class="row g-2 mb-3">
@@ -411,11 +429,11 @@ function renderNivelesRiesgoLinea(niveles) {
                         </div>
                         
                         <div class="mb-2">
-                            <label class="form-label small">Tasa Nom. Mensual (%)</label>
+                            <label class="form-label small">Tasa Nom. Mensual (%) <small class="text-info">(auto)</small></label>
                             <div class="input-group input-group-sm">
-                                <input type="number" class="form-control" step="0.0001"
-                                       value="${nivel.tasa_nominal_mensual}"
-                                       onchange="actualizarNivelLinea(${index}, 'tasa_nominal_mensual', this.value)">
+                                <input type="number" class="form-control bg-light" step="0.0001"
+                                       value="${nivel.tasa_nominal_mensual}" readonly
+                                       title="Se calcula automáticamente desde la Tasa E.A.">
                                 <span class="input-group-text">%</span>
                             </div>
                         </div>
@@ -481,9 +499,68 @@ function actualizarNivelLinea(index, campo, valor) {
 
   configScoringLinea.niveles_riesgo[index][campo] = valor;
 
+  // Si cambió la tasa EA, calcular automáticamente la tasa nominal mensual
+  if (campo === "tasa_ea") {
+    const tasaEA = valor / 100; // Convertir a decimal
+    // Fórmula: tasa_nominal_mensual = ((1 + tasa_ea)^(1/12) - 1) * 100
+    const tasaNominalMensual = (Math.pow(1 + tasaEA, 1/12) - 1) * 100;
+    configScoringLinea.niveles_riesgo[index].tasa_nominal_mensual = parseFloat(tasaNominalMensual.toFixed(4));
+    // Re-renderizar para mostrar el nuevo valor
+    renderNivelesRiesgoLinea(configScoringLinea.niveles_riesgo);
+  }
+
   // Si cambió el color, actualizar visualmente
   if (campo === "color") {
     renderNivelesRiesgoLinea(configScoringLinea.niveles_riesgo);
+  }
+}
+
+/**
+ * Agrega un nuevo nivel de riesgo
+ */
+function agregarNivelRiesgoLinea() {
+  if (!configScoringLinea) return;
+
+  if (!configScoringLinea.niveles_riesgo) {
+    configScoringLinea.niveles_riesgo = [];
+  }
+
+  // Determinar valores por defecto para el nuevo nivel
+  const numNiveles = configScoringLinea.niveles_riesgo.length;
+  const colores = ["#28a745", "#ffc107", "#fd7e14", "#dc3545", "#6c757d"];
+  const nombres = ["Bajo Riesgo", "Moderado", "Alto Riesgo", "Muy Alto Riesgo", "Nivel " + (numNiveles + 1)];
+
+  const nuevoNivel = {
+    nombre: nombres[numNiveles] || "Nivel " + (numNiveles + 1),
+    min: 0,
+    max: 100,
+    tasa_ea: 30,
+    tasa_nominal_mensual: 2.21,
+    aval_porcentaje: 0.10,
+    color: colores[numNiveles] || "#6c757d"
+  };
+
+  configScoringLinea.niveles_riesgo.push(nuevoNivel);
+  renderNivelesRiesgoLinea(configScoringLinea.niveles_riesgo);
+  mostrarAlertaScoring("Nuevo nivel agregado. No olvide guardar los cambios.", "info");
+}
+
+/**
+ * Elimina un nivel de riesgo
+ */
+function eliminarNivelRiesgoLinea(index) {
+  if (!configScoringLinea || !configScoringLinea.niveles_riesgo) return;
+
+  if (configScoringLinea.niveles_riesgo.length <= 1) {
+    mostrarAlertaScoring("Debe mantener al menos un nivel de riesgo.", "warning");
+    return;
+  }
+
+  const nivel = configScoringLinea.niveles_riesgo[index];
+  if (confirm(`¿Está seguro de eliminar el nivel "${nivel.nombre}"?`)) {
+    configScoringLinea.niveles_riesgo.splice(index, 1);
+    renderNivelesRiesgoLinea(configScoringLinea.niveles_riesgo);
+    mostrarAlertaScoring("Nivel eliminado. No olvide guardar los cambios.", "info");
   }
 }
 
@@ -629,8 +706,8 @@ function renderFactoresRechazoLinea(factores) {
                                value="${
                                  factor.criterio_nombre || factor.criterio
                                }"
-                               onchange="actualizarFactorLinea(${index}, 'criterio_nombre', this.value)">
-                        <small class="text-muted">${factor.criterio}</small>
+                               onchange="actualizarFactorLinea(${index}, 'criterio_nombre', this.value)"
+                               data-criterio-key="${factor.criterio}">
                     </td>
                     <td>
                         <select class="form-select form-select-sm"
@@ -1103,22 +1180,17 @@ function copiarConfiguracionModal() {
                                 <label class="form-label">Copiar desde:</label>
                                 <select class="form-select" id="selectLineaOrigen">
                                     ${lineasCreditoDisponibles
+                                      .filter((l) => l.id !== lineaSeleccionadaId)
                                       .map(
                                         (l) =>
-                                          `<option value="${l.id}" ${
-                                            l.id === lineaSeleccionadaId
-                                              ? "disabled"
-                                              : ""
-                                          }>
-                                            ${l.nombre}
-                                        </option>`
+                                          `<option value="${l.id}">${l.nombre}</option>`
                                       )
                                       .join("")}
                                 </select>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">Hacia (línea actual):</label>
-                                <input type="text" class="form-control" value="${lineaSeleccionadaNombre}" disabled>
+                                <input type="text" class="form-control bg-light" id="txtLineaDestino" value="${lineaSeleccionadaNombre}" readonly>
                                 <input type="hidden" id="lineaDestinoId" value="${lineaSeleccionadaId}">
                             </div>
                             <div class="form-check">
@@ -1141,18 +1213,17 @@ function copiarConfiguracionModal() {
     document.body.insertAdjacentHTML("beforeend", modalHtml);
     modal = document.getElementById("copiarConfigModal");
   } else {
-    // Actualizar opciones
+    // Actualizar opciones del select origen (excluir línea actual)
     const selectOrigen = document.getElementById("selectLineaOrigen");
     selectOrigen.innerHTML = lineasCreditoDisponibles
+      .filter((l) => l.id !== lineaSeleccionadaId) // Excluir línea actual
       .map(
-        (l) =>
-          `<option value="${l.id}" ${
-            l.id === lineaSeleccionadaId ? "disabled" : ""
-          }>
-                ${l.nombre}
-            </option>`
+        (l) => `<option value="${l.id}">${l.nombre}</option>`
       )
       .join("");
+    
+    // Actualizar campo destino (línea actual)
+    document.getElementById("txtLineaDestino").value = lineaSeleccionadaNombre;
     document.getElementById("lineaDestinoId").value = lineaSeleccionadaId;
   }
 
@@ -1233,7 +1304,7 @@ function getCSRFToken() {
 
 /**
  * Agrega un nuevo criterio a la línea de crédito seleccionada
- * TODO: Implementar modal de creación de criterio
+ * Los criterios se gestionan desde el catálogo maestro y se comparten entre líneas
  */
 function agregarCriterioLinea() {
   if (!lineaSeleccionadaId) {
@@ -1241,12 +1312,12 @@ function agregarCriterioLinea() {
     return;
   }
 
-  // Por ahora mostrar mensaje informativo
+  // Mostrar mensaje informativo
   mostrarAlertaScoring(
-    "La gestión de criterios por línea estará disponible próximamente. " +
-      'Por ahora use la pestaña "Global (Legacy)" para configurar criterios globales.',
+    "Los criterios de scoring se comparten entre todas las líneas. " +
+      "Configure niveles de riesgo y factores de rechazo específicos para cada línea.",
     "info",
-    8000
+    6000
   );
 }
 
@@ -1258,48 +1329,62 @@ function renderCriteriosLinea(criterios) {
   const container = document.getElementById("criteriosLineaContainer");
   if (!container) return;
 
-  if (!criterios || criterios.length === 0) {
-    container.innerHTML = `
+  // Los criterios se comparten entre líneas (catálogo maestro)
+  let html = `
+        <div class="alert alert-info mb-3">
+            <i class="bi bi-info-circle me-2"></i>
+            <strong>Criterios de Evaluación</strong>: Los criterios de scoring se aplican a todas las líneas
+            de crédito. Lo que diferencia cada línea son los <strong>niveles de riesgo</strong> y los 
+            <strong>factores de rechazo</strong> que puede configurar en las pestañas anteriores.
+        </div>
+    `;
+
+  if (!criterios || Object.keys(criterios).length === 0) {
+    html += `
             <div class="text-center py-4 text-muted">
                 <i class="bi bi-inbox fs-1 d-block mb-2"></i>
-                No hay criterios configurados para esta línea.<br>
-                <small>Se usarán los criterios globales como fallback.</small>
+                No hay criterios en el catálogo maestro.
             </div>
         `;
+    container.innerHTML = html;
     return;
   }
 
-  // TODO: Implementar renderizado completo de criterios
-  let html = `
-        <div class="alert alert-info">
-            <i class="bi bi-info-circle me-2"></i>
-            Esta línea tiene ${criterios.length} criterios configurados.
-            La edición individual estará disponible próximamente.
-        </div>
+  const criteriosArray = Object.entries(criterios);
+  
+  html += `
+        <p class="text-muted small mb-3">
+            <i class="bi bi-check-circle text-success me-1"></i>
+            ${criteriosArray.length} criterios activos en el catálogo maestro
+        </p>
         <div class="table-responsive">
-            <table class="table table-sm">
-                <thead>
+            <table class="table table-sm table-hover">
+                <thead class="table-light">
                     <tr>
                         <th>Criterio</th>
-                        <th>Peso</th>
-                        <th>Sección</th>
-                        <th>Activo</th>
+                        <th class="text-center">Peso</th>
+                        <th>Tipo</th>
+                        <th class="text-center">Rangos</th>
                     </tr>
                 </thead>
                 <tbody>
     `;
-
-  criterios.forEach((c) => {
+  
+  criteriosArray.forEach(([codigo, c]) => {
+    const numRangos = c.rangos ? c.rangos.length : 0;
     html += `
-            <tr>
-                <td>${c.nombre || c.criterio_nombre || "-"}</td>
-                <td>${c.peso || c.peso_default || "-"}%</td>
-                <td>${c.seccion_nombre || "-"}</td>
-                <td>${c.activo ? "✅" : "❌"}</td>
-            </tr>
-        `;
+                <tr>
+                    <td>
+                        <strong>${c.nombre || codigo}</strong>
+                        ${c.descripcion ? `<br><small class="text-muted">${c.descripcion}</small>` : ''}
+                    </td>
+                    <td class="text-center">${c.peso || 5}</td>
+                    <td><span class="badge bg-secondary">${c.tipo_campo || 'numerico'}</span></td>
+                    <td class="text-center">${numRangos}</td>
+                </tr>
+            `;
   });
-
+  
   html += `
                 </tbody>
             </table>
