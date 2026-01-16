@@ -78,7 +78,7 @@ function renderSelectorLinea(lineas) {
         <div class="card mb-4 border-primary">
             <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                 <span><i class="bi bi-box-seam me-2"></i>Línea de Crédito</span>
-                <span class="badge bg-light text-primary" id="badgeLineaActual">Sin seleccionar</span>
+                <span class="badge bg-white text-dark fw-bold border" id="badgeLineaActual">Sin seleccionar</span>
             </div>
             <div class="card-body">
                 <div class="row align-items-end">
@@ -277,8 +277,21 @@ function renderNivelesRiesgoLinea(niveles) {
   const container = document.getElementById("nivelesRiesgoLineaContainer");
   if (!container) return;
 
+  // Header con botón agregar
+  let html = `
+    <div class="mb-3 d-flex justify-content-between align-items-center">
+      <h6 class="mb-0">
+        <i class="bi bi-bar-chart-steps me-2"></i>Niveles de Riesgo y Tasas Diferenciadas
+        <span class="badge bg-info ms-2">${lineaSeleccionadaNombre}</span>
+      </h6>
+      <button type="button" class="btn btn-sm btn-outline-success" onclick="agregarNivelRiesgoLinea()">
+        <i class="bi bi-plus-lg me-1"></i>Agregar nivel
+      </button>
+    </div>
+  `;
+
   if (!niveles || niveles.length === 0) {
-    container.innerHTML = `
+    html += `
             <div class="alert alert-warning">
                 <i class="bi bi-exclamation-triangle me-2"></i>
                 No hay niveles de riesgo configurados para esta línea.
@@ -288,10 +301,11 @@ function renderNivelesRiesgoLinea(niveles) {
                 </button>
             </div>
         `;
+    container.innerHTML = html;
     return;
   }
 
-  let html = `<div class="row">`;
+  html += `<div class="row">`;
 
   niveles.forEach((nivel, index) => {
     html += `
@@ -299,13 +313,17 @@ function renderNivelesRiesgoLinea(niveles) {
                 <div class="card h-100" style="border-top: 4px solid ${
                   nivel.color
                 };">
-                    <div class="card-header" style="background-color: ${
+                    <div class="card-header d-flex justify-content-between align-items-center" style="background-color: ${
                       nivel.color
                     }20;">
-                        <input type="text" class="form-control form-control-sm fw-bold"
+                        <input type="text" class="form-control form-control-sm fw-bold flex-grow-1 me-2"
                                value="${nivel.nombre}"
                                onchange="actualizarNivelLinea(${index}, 'nombre', this.value)"
                                style="background: transparent; border: none;">
+                        <button type="button" class="btn btn-sm btn-outline-danger" 
+                                onclick="eliminarNivelRiesgoLinea(${index})" title="Eliminar nivel">
+                            <i class="bi bi-trash"></i>
+                        </button>
                     </div>
                     <div class="card-body">
                         <div class="row g-2 mb-3">
@@ -341,11 +359,11 @@ function renderNivelesRiesgoLinea(niveles) {
                         </div>
                         
                         <div class="mb-2">
-                            <label class="form-label small">Tasa Nom. Mensual (%)</label>
+                            <label class="form-label small">Tasa Nom. Mensual (%) <small class="text-info">(auto)</small></label>
                             <div class="input-group input-group-sm">
-                                <input type="number" class="form-control" step="0.0001"
-                                       value="${nivel.tasa_nominal_mensual}"
-                                       onchange="actualizarNivelLinea(${index}, 'tasa_nominal_mensual', this.value)">
+                                <input type="number" class="form-control bg-light" step="0.0001"
+                                       value="${nivel.tasa_nominal_mensual}" readonly
+                                       title="Se calcula automáticamente desde la Tasa E.A.">
                                 <span class="input-group-text">%</span>
                             </div>
                         </div>
@@ -411,9 +429,68 @@ function actualizarNivelLinea(index, campo, valor) {
 
   configScoringLinea.niveles_riesgo[index][campo] = valor;
 
+  // Si cambió la tasa EA, calcular automáticamente la tasa nominal mensual
+  if (campo === "tasa_ea") {
+    const tasaEA = valor / 100; // Convertir a decimal
+    // Fórmula: tasa_nominal_mensual = ((1 + tasa_ea)^(1/12) - 1) * 100
+    const tasaNominalMensual = (Math.pow(1 + tasaEA, 1/12) - 1) * 100;
+    configScoringLinea.niveles_riesgo[index].tasa_nominal_mensual = parseFloat(tasaNominalMensual.toFixed(4));
+    // Re-renderizar para mostrar el nuevo valor
+    renderNivelesRiesgoLinea(configScoringLinea.niveles_riesgo);
+  }
+
   // Si cambió el color, actualizar visualmente
   if (campo === "color") {
     renderNivelesRiesgoLinea(configScoringLinea.niveles_riesgo);
+  }
+}
+
+/**
+ * Agrega un nuevo nivel de riesgo
+ */
+function agregarNivelRiesgoLinea() {
+  if (!configScoringLinea) return;
+
+  if (!configScoringLinea.niveles_riesgo) {
+    configScoringLinea.niveles_riesgo = [];
+  }
+
+  // Determinar valores por defecto para el nuevo nivel
+  const numNiveles = configScoringLinea.niveles_riesgo.length;
+  const colores = ["#28a745", "#ffc107", "#fd7e14", "#dc3545", "#6c757d"];
+  const nombres = ["Bajo Riesgo", "Moderado", "Alto Riesgo", "Muy Alto Riesgo", "Nivel " + (numNiveles + 1)];
+
+  const nuevoNivel = {
+    nombre: nombres[numNiveles] || "Nivel " + (numNiveles + 1),
+    min: 0,
+    max: 100,
+    tasa_ea: 30,
+    tasa_nominal_mensual: 2.21,
+    aval_porcentaje: 0.10,
+    color: colores[numNiveles] || "#6c757d"
+  };
+
+  configScoringLinea.niveles_riesgo.push(nuevoNivel);
+  renderNivelesRiesgoLinea(configScoringLinea.niveles_riesgo);
+  mostrarAlertaScoring("Nuevo nivel agregado. No olvide guardar los cambios.", "info");
+}
+
+/**
+ * Elimina un nivel de riesgo
+ */
+function eliminarNivelRiesgoLinea(index) {
+  if (!configScoringLinea || !configScoringLinea.niveles_riesgo) return;
+
+  if (configScoringLinea.niveles_riesgo.length <= 1) {
+    mostrarAlertaScoring("Debe mantener al menos un nivel de riesgo.", "warning");
+    return;
+  }
+
+  const nivel = configScoringLinea.niveles_riesgo[index];
+  if (confirm(`¿Está seguro de eliminar el nivel "${nivel.nombre}"?`)) {
+    configScoringLinea.niveles_riesgo.splice(index, 1);
+    renderNivelesRiesgoLinea(configScoringLinea.niveles_riesgo);
+    mostrarAlertaScoring("Nivel eliminado. No olvide guardar los cambios.", "info");
   }
 }
 
@@ -559,8 +636,8 @@ function renderFactoresRechazoLinea(factores) {
                                value="${
                                  factor.criterio_nombre || factor.criterio
                                }"
-                               onchange="actualizarFactorLinea(${index}, 'criterio_nombre', this.value)">
-                        <small class="text-muted">${factor.criterio}</small>
+                               onchange="actualizarFactorLinea(${index}, 'criterio_nombre', this.value)"
+                               data-criterio-key="${factor.criterio}">
                     </td>
                     <td>
                         <select class="form-select form-select-sm"

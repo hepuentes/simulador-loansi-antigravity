@@ -141,6 +141,47 @@ def log_db_operation(operation, details="", level="INFO"):
 # ============================================
 
 
+def registrar_auditoria(usuario, accion, descripcion, detalles=None):
+    """
+    Registra una acción de auditoría en el sistema.
+    Por ahora hace logging, pero puede extenderse para guardar en BD.
+    
+    Args:
+        usuario (str): Usuario que realizó la acción
+        accion (str): Tipo de acción (ej: "SCORING_CONFIG_UPDATE")
+        descripcion (str): Descripción de la acción
+        detalles (str): Detalles adicionales en formato JSON (opcional)
+    """
+    try:
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        log_message = f"📝 AUDITORÍA [{timestamp}] Usuario: {usuario} | Acción: {accion} | {descripcion}"
+        if detalles:
+            log_message += f" | Detalles: {detalles}"
+        print(log_message)
+        
+        # Opcionalmente, guardar en tabla de auditoría si existe
+        try:
+            db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "loansi.db")
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+            
+            # Verificar si existe la tabla de auditoría
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='auditoria'")
+            if cursor.fetchone():
+                cursor.execute("""
+                    INSERT INTO auditoria (usuario, accion, descripcion, detalles, fecha)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (usuario, accion, descripcion, detalles, timestamp))
+                conn.commit()
+            conn.close()
+        except Exception as e:
+            # Si falla guardar en BD, solo loggeamos (no es crítico)
+            pass
+            
+    except Exception as e:
+        print(f"⚠️ Error en auditoría: {e}")
+
+
 def leer_evaluaciones_db():
     """
     Lee todas las evaluaciones desde SQLite.
