@@ -1,12 +1,14 @@
 """
 COMITE_ROUTES.PY - Rutas del comité de crédito
 ===============================================
+CORREGIDO: 2026-01-18 - Agregada variable stats para el template
 """
 
 from flask import render_template, request, redirect, url_for, session, jsonify, flash
 from functools import wraps
 import json
 import traceback
+from datetime import datetime
 
 from . import comite_bp
 
@@ -53,7 +55,7 @@ def requiere_permiso(permiso):
 
 @comite_bp.route("/admin/comite-credito")
 @login_required
-@requiere_permiso("com_ver_casos")
+@requiere_permiso("com_ver_todos")
 def comite_credito():
     """Panel del comité de crédito"""
     import sys
@@ -64,7 +66,7 @@ def comite_credito():
     
     from db_helpers import obtener_casos_comite, cargar_configuracion, cargar_scoring
     
-    # Obtener casos pendientes
+    # Obtener casos por estado
     casos_pendientes = obtener_casos_comite({"estado_comite": "pending"})
     casos_aprobados = obtener_casos_comite({"estado_comite": "approved", "limite": 50})
     casos_rechazados = obtener_casos_comite({"estado_comite": "rejected", "limite": 50})
@@ -76,13 +78,41 @@ def comite_credito():
     config_comite = config.get("COMITE_CREDITO", {})
     niveles_riesgo = scoring.get("niveles_riesgo", [])
     
+    # =====================================================
+    # CRÍTICO: Calcular estadísticas para el template
+    # =====================================================
+    # Contar casos con alerta (nivel de riesgo alto o muy alto)
+    casos_con_alerta = 0
+    for caso in casos_pendientes:
+        nivel = caso.get('nivel_riesgo', '').lower()
+        if 'alto' in nivel or 'critico' in nivel or 'muy alto' in nivel:
+            casos_con_alerta += 1
+    
+    # Contar decisiones de hoy
+    hoy = datetime.now().strftime('%Y-%m-%d')
+    decisiones_hoy = 0
+    for caso in casos_aprobados + casos_rechazados:
+        decision = caso.get('decision_admin', {})
+        timestamp = decision.get('timestamp', '')
+        if timestamp and timestamp.startswith(hoy):
+            decisiones_hoy += 1
+    
+    stats = {
+        'pendientes': len(casos_pendientes),
+        'con_alerta': casos_con_alerta,
+        'decisiones_hoy': decisiones_hoy,
+        'aprobados': len(casos_aprobados),
+        'rechazados': len(casos_rechazados)
+    }
+    
     return render_template(
         "admin/comite_credito.html",
         casos_pendientes=casos_pendientes,
         casos_aprobados=casos_aprobados,
         casos_rechazados=casos_rechazados,
         config_comite=config_comite,
-        niveles_riesgo=niveles_riesgo
+        niveles_riesgo=niveles_riesgo,
+        stats=stats
     )
 
 

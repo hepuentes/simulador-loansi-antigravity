@@ -1,6 +1,7 @@
 """
 ADMIN_ROUTES.PY - Rutas de administración
 ==========================================
+CORREGIDO: 2026-01-18 - Agregadas rutas /admin/seguros y /admin/usuario/eliminar
 """
 
 from flask import render_template, request, redirect, url_for, session, jsonify, flash
@@ -51,6 +52,22 @@ def requiere_permiso(permiso):
     return decorator
 
 
+def tiene_alguno_de(permisos_lista):
+    """Verifica si el usuario tiene al menos uno de los permisos de la lista"""
+    import sys
+    from pathlib import Path
+    BASE_DIR = Path(__file__).parent.parent.parent.resolve()
+    if str(BASE_DIR) not in sys.path:
+        sys.path.insert(0, str(BASE_DIR))
+    
+    from permisos import tiene_permiso
+    
+    for permiso in permisos_lista:
+        if tiene_permiso(permiso):
+            return True
+    return False
+
+
 def requiere_rol(*roles_permitidos):
     """Decorador que requiere uno de los roles especificados"""
     def decorator(f):
@@ -79,22 +96,44 @@ def admin_panel():
     BASE_DIR = Path(__file__).parent.parent.parent.resolve()
     if str(BASE_DIR) not in sys.path:
         sys.path.insert(0, str(BASE_DIR))
-    
+
     from db_helpers import cargar_configuracion, cargar_scoring, obtener_usuarios_completos
     from db_helpers_scoring_linea import obtener_lineas_credito_scoring
-    
+
     config = cargar_configuracion()
     scoring = cargar_scoring()
-    usuarios = obtener_usuarios_completos()
+    usuarios_lista = obtener_usuarios_completos()
     
+    # Convertir lista a diccionario indexado por username (formato esperado por template)
+    usuarios = {u['username']: u for u in usuarios_lista}
+
     lineas_credito = config.get("LINEAS_CREDITO", {})
     costos_asociados = config.get("COSTOS_ASOCIADOS", {})
     parametros_capacidad = config.get("PARAMETROS_CAPACIDAD_PAGO", {})
     config_comite = config.get("COMITE_CREDITO", {})
     
+    # Obtener configuración de seguros
+    seguros_config = config.get("SEGUROS", {})
+    seguro_vida = seguros_config.get("SEGURO_VIDA", [])
+
     # Obtener líneas con info de scoring
     lineas_scoring = obtener_lineas_credito_scoring()
     
+    # Variables para el template admin.html
+    scoring_criterios = scoring.get("criterios", {})
+    scoring_secciones = scoring.get("secciones", [])
+    
+    # Preparar scoring_json para JavaScript
+    scoring_json = {
+        "criterios": scoring_criterios,
+        "secciones": scoring_secciones,
+        "niveles_riesgo": scoring.get("niveles_riesgo", []),
+        "factores_rechazo_automatico": scoring.get("factores_rechazo_automatico", []),
+        "puntaje_minimo_aprobacion": scoring.get("puntaje_minimo_aprobacion", 17),
+        "dti_maximo": scoring.get("dti_maximo", 40),
+        "umbral_mora_telcos_rechazo": scoring.get("umbral_mora_telcos_rechazo", 200000)
+    }
+
     return render_template(
         "admin/admin.html",
         lineas_credito=lineas_credito,
@@ -103,85 +142,17 @@ def admin_panel():
         usuarios=usuarios,
         parametros_capacidad=parametros_capacidad,
         config_comite=config_comite,
-        scoring=scoring
+        scoring=scoring,
+        scoring_json=scoring_json,
+        scoring_criterios=scoring_criterios,
+        scoring_secciones=scoring_secciones,
+        seguro_vida=seguro_vida
     )
 
 
-@admin_bp.route("/historial-evaluaciones")
-@login_required
-@requiere_permiso("sco_hist_todos")
-def historial_evaluaciones():
-    """Historial de todas las evaluaciones"""
-    import sys
-    from pathlib import Path
-    BASE_DIR = Path(__file__).parent.parent.parent.resolve()
-    if str(BASE_DIR) not in sys.path:
-        sys.path.insert(0, str(BASE_DIR))
-    
-    from db_helpers import cargar_evaluaciones
-    
-    evaluaciones = cargar_evaluaciones()
-    
-    return render_template(
-        "admin/historial_evaluaciones.html",
-        evaluaciones=evaluaciones
-    )
-
-
-@admin_bp.route("/asignaciones-equipo", methods=["GET", "POST"])
-@login_required
-@requiere_permiso("usr_asignaciones_equipo")
-def asignaciones_equipo():
-    """Gestión de asignaciones de equipo"""
-    import sys
-    from pathlib import Path
-    BASE_DIR = Path(__file__).parent.parent.parent.resolve()
-    if str(BASE_DIR) not in sys.path:
-        sys.path.insert(0, str(BASE_DIR))
-    
-    from db_helpers import (
-        get_all_assignments, 
-        add_assignment, 
-        remove_assignment_by_id,
-        get_managers_for_assignments,
-        get_members_for_assignments
-    )
-    
-    if request.method == "POST":
-        action = request.form.get("action")
-        
-        if action == "add":
-            manager = request.form.get("manager")
-            member = request.form.get("member")
-            
-            if manager and member:
-                if add_assignment(manager, member):
-                    flash(f"Asignación creada: {member} → {manager}", "success")
-                else:
-                    flash("Error al crear asignación", "error")
-        
-        elif action == "remove":
-            assignment_id = request.form.get("assignment_id")
-            if assignment_id:
-                if remove_assignment_by_id(int(assignment_id)):
-                    flash("Asignación eliminada", "success")
-                else:
-                    flash("Error al eliminar asignación", "error")
-        
-        return redirect(url_for("admin.asignaciones_equipo"))
-    
-    # GET: mostrar página
-    asignaciones = get_all_assignments()
-    managers = get_managers_for_assignments()
-    members = get_members_for_assignments()
-    
-    return render_template(
-        "admin/asignaciones_equipo.html",
-        asignaciones=asignaciones,
-        managers=managers,
-        members=members
-    )
-
+# ============================================================================
+# RUTAS DE USUARIOS
+# ============================================================================
 
 @admin_bp.route("/usuario/nuevo", methods=["POST"])
 @login_required
@@ -193,31 +164,31 @@ def crear_usuario():
     BASE_DIR = Path(__file__).parent.parent.parent.resolve()
     if str(BASE_DIR) not in sys.path:
         sys.path.insert(0, str(BASE_DIR))
-    
+
     from db_helpers import crear_usuario as db_crear_usuario
     from werkzeug.security import generate_password_hash
-    
+
     try:
         username = request.form.get("username", "").strip().lower()
         password = request.form.get("password", "")
         rol = request.form.get("rol", "asesor")
         nombre_completo = request.form.get("nombre_completo", "").strip()
-        
+
         if not username or not password:
             flash("Usuario y contraseña son requeridos", "error")
-            return redirect(url_for("admin.admin_panel"))
-        
+            return redirect(url_for("admin.admin_panel") + "#Usuarios")
+
         password_hash = generate_password_hash(password)
-        
+
         if db_crear_usuario(username, password_hash, rol, nombre_completo):
             flash(f"Usuario '{username}' creado exitosamente", "success")
         else:
             flash(f"El usuario '{username}' ya existe", "error")
-        
+
     except Exception as e:
         flash(f"Error al crear usuario: {str(e)}", "error")
-    
-    return redirect(url_for("admin.admin_panel"))
+
+    return redirect(url_for("admin.admin_panel") + "#Usuarios")
 
 
 @admin_bp.route("/usuario/cambiar-password", methods=["POST"])
@@ -230,35 +201,34 @@ def cambiar_password():
     BASE_DIR = Path(__file__).parent.parent.parent.resolve()
     if str(BASE_DIR) not in sys.path:
         sys.path.insert(0, str(BASE_DIR))
-    
-    from db_helpers import cargar_configuracion, guardar_configuracion
+
+    from database import conectar_db
     from werkzeug.security import generate_password_hash
-    
+
     try:
         username = request.form.get("username")
         new_password = request.form.get("new_password")
-        
+
         if not username or not new_password:
             flash("Usuario y nueva contraseña son requeridos", "error")
-            return redirect(url_for("admin.admin_panel"))
-        
-        config = cargar_configuracion()
-        usuarios = config.get("USUARIOS", {})
-        
-        if username not in usuarios:
-            flash(f"Usuario '{username}' no existe", "error")
-            return redirect(url_for("admin.admin_panel"))
-        
-        usuarios[username]["password_hash"] = generate_password_hash(new_password)
-        config["USUARIOS"] = usuarios
-        guardar_configuracion(config)
-        
+            return redirect(url_for("admin.admin_panel") + "#Usuarios")
+
+        # Actualizar en SQLite
+        conn = conectar_db()
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE usuarios SET password_hash = ? WHERE username = ?",
+            (generate_password_hash(new_password), username)
+        )
+        conn.commit()
+        conn.close()
+
         flash(f"Contraseña de '{username}' actualizada", "success")
-        
+
     except Exception as e:
         flash(f"Error al cambiar contraseña: {str(e)}", "error")
-    
-    return redirect(url_for("admin.admin_panel"))
+
+    return redirect(url_for("admin.admin_panel") + "#Usuarios")
 
 
 @admin_bp.route("/usuario/eliminar", methods=["POST"])
@@ -271,38 +241,265 @@ def eliminar_usuario():
     BASE_DIR = Path(__file__).parent.parent.parent.resolve()
     if str(BASE_DIR) not in sys.path:
         sys.path.insert(0, str(BASE_DIR))
-    
+
     from db_helpers import eliminar_usuario_db
-    
+
     try:
         username = request.form.get("username")
-        
+
         if not username:
             flash("Usuario no especificado", "error")
-            return redirect(url_for("admin.admin_panel"))
-        
+            return redirect(url_for("admin.admin_panel") + "#Usuarios")
+
         if username == "admin":
             flash("No se puede eliminar el usuario admin", "error")
-            return redirect(url_for("admin.admin_panel"))
-        
+            return redirect(url_for("admin.admin_panel") + "#Usuarios")
+
         if username == session.get("username"):
             flash("No puedes eliminarte a ti mismo", "error")
-            return redirect(url_for("admin.admin_panel"))
-        
+            return redirect(url_for("admin.admin_panel") + "#Usuarios")
+
         if eliminar_usuario_db(username):
-            flash(f"Usuario '{username}' eliminado", "success")
+            flash(f"Usuario '{username}' eliminado correctamente", "success")
         else:
-            flash(f"Error al eliminar usuario '{username}'", "error")
+            flash(f"Usuario '{username}' no encontrado o ya está inactivo", "warning")
+
+    except Exception as e:
+        traceback.print_exc()
+        flash(f"Error al eliminar usuario: {str(e)}", "error")
+
+    return redirect(url_for("admin.admin_panel") + "#Usuarios")
+
+
+# ============================================================================
+# RUTAS DE SEGUROS
+# ============================================================================
+
+@admin_bp.route("/seguros", methods=["POST"])
+@login_required
+def actualizar_seguros():
+    """Actualizar configuración de seguros"""
+    import sys
+    from pathlib import Path
+    BASE_DIR = Path(__file__).parent.parent.parent.resolve()
+    if str(BASE_DIR) not in sys.path:
+        sys.path.insert(0, str(BASE_DIR))
+    
+    # Verificar permisos
+    if not tiene_alguno_de(["cfg_seguros_editar", "cfg_tasas_editar"]):
+        flash("No tienes permiso para editar seguros", "warning")
+        return redirect(url_for("admin.admin_panel"))
+    
+    from db_helpers import cargar_configuracion, guardar_configuracion
+    
+    try:
+        # Obtener todos los rangos del formulario
+        rangos_nuevos = []
+        i = 0
+        
+        while True:
+            edad_min = request.form.get(f"edad_min_{i}")
+            edad_max = request.form.get(f"edad_max_{i}")
+            costo = request.form.get(f"costo_{i}")
+            descripcion = request.form.get(f"descripcion_{i}")
+            
+            if not edad_min:  # No hay más rangos
+                break
+            
+            try:
+                edad_min = int(edad_min)
+                edad_max = int(edad_max)
+                # Limpiar formato de moneda
+                costo_str = costo.replace(".", "").replace(",", "").replace("$", "").strip()
+                costo = int(float(costo_str)) if costo_str else 0
+                
+                if edad_min < 18 or edad_max > 120:
+                    flash("Las edades deben estar entre 18 y 120 años", "error")
+                    return redirect(url_for("admin.admin_panel") + "#Seguros")
+                
+                if edad_min >= edad_max:
+                    flash("La edad mínima debe ser menor que la edad máxima", "error")
+                    return redirect(url_for("admin.admin_panel") + "#Seguros")
+                
+                if costo < 0:
+                    flash("El costo no puede ser negativo", "error")
+                    return redirect(url_for("admin.admin_panel") + "#Seguros")
+                
+                rangos_nuevos.append({
+                    "id": i + 1,
+                    "edad_min": edad_min,
+                    "edad_max": edad_max,
+                    "costo": costo,
+                    "descripcion": descripcion or f"{edad_min} a {edad_max} años"
+                })
+                
+            except ValueError as ve:
+                flash(f"Error en rango {i+1}: valores inválidos - {str(ve)}", "error")
+                return redirect(url_for("admin.admin_panel") + "#Seguros")
+            
+            i += 1
+        
+        if not rangos_nuevos:
+            flash("Debe haber al menos un rango de seguro", "error")
+            return redirect(url_for("admin.admin_panel") + "#Seguros")
+        
+        # Ordenar por edad_min
+        rangos_nuevos.sort(key=lambda x: x["edad_min"])
+        
+        # Validar que no haya solapamientos
+        for j in range(len(rangos_nuevos) - 1):
+            if rangos_nuevos[j]["edad_max"] >= rangos_nuevos[j + 1]["edad_min"]:
+                flash("Los rangos de edad no pueden solaparse", "error")
+                return redirect(url_for("admin.admin_panel") + "#Seguros")
+        
+        # Guardar en configuración
+        config = cargar_configuracion()
+        config["SEGUROS"] = {"SEGURO_VIDA": rangos_nuevos}
+        guardar_configuracion(config)
+        
+        flash("Configuración de seguros actualizada correctamente", "success")
         
     except Exception as e:
-        flash(f"Error al eliminar usuario: {str(e)}", "error")
+        traceback.print_exc()
+        flash(f"Error al actualizar seguros: {str(e)}", "error")
     
-    return redirect(url_for("admin.admin_panel"))
+    return redirect(url_for("admin.admin_panel") + "#Seguros")
 
+
+# ============================================================================
+# RUTAS DE HISTORIAL DE EVALUACIONES
+# ============================================================================
+
+@admin_bp.route("/historial-evaluaciones")
+@login_required
+@requiere_permiso("sco_hist_todos")
+def historial_evaluaciones():
+    """Historial de todas las evaluaciones"""
+    import sys
+    from pathlib import Path
+    BASE_DIR = Path(__file__).parent.parent.parent.resolve()
+    if str(BASE_DIR) not in sys.path:
+        sys.path.insert(0, str(BASE_DIR))
+
+    from db_helpers import cargar_evaluaciones
+
+    evaluaciones = cargar_evaluaciones()
+
+    # Obtener filtros de la URL
+    filtros = {
+        'asesor': request.args.get('asesor', ''),
+        'desde': request.args.get('desde', ''),
+        'hasta': request.args.get('hasta', ''),
+        'resultado': request.args.get('resultado', '')
+    }
+
+    # Obtener lista de asesores únicos para el filtro
+    asesores_disponibles = list(set(e.get('asesor', '') for e in evaluaciones if e.get('asesor')))
+    asesores_disponibles.sort()
+    
+    # Calcular estadísticas para las tarjetas
+    total = len(evaluaciones)
+    aprobados = sum(1 for e in evaluaciones if e.get('resultado', {}).get('aprobado', False))
+    rechazados = total - aprobados
+    tasa_aprobacion = round((aprobados / total * 100) if total > 0 else 0)
+    
+    stats = {
+        'total': total,
+        'aprobados': aprobados,
+        'rechazados': rechazados,
+        'tasa_aprobacion': tasa_aprobacion
+    }
+    
+    # Paginación
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    total_pages = (total + per_page - 1) // per_page if total > 0 else 1
+    
+    pagination = {
+        'page': page,
+        'per_page': per_page,
+        'total': total,
+        'total_pages': total_pages,
+        'has_prev': page > 1,
+        'has_next': page < total_pages
+    }
+
+    return render_template(
+        "admin/historial_evaluaciones.html",
+        evaluaciones=evaluaciones,
+        filtros=filtros,
+        asesores=asesores_disponibles,
+        asesores_disponibles=asesores_disponibles,
+        stats=stats,
+        pagination=pagination
+    )
+
+
+# ============================================================================
+# RUTAS DE ASIGNACIONES DE EQUIPO
+# ============================================================================
+
+@admin_bp.route("/asignaciones-equipo", methods=["GET", "POST"])
+@login_required
+@requiere_permiso("usr_asignaciones_equipo")
+def asignaciones_equipo():
+    """Gestión de asignaciones de equipo"""
+    import sys
+    from pathlib import Path
+    BASE_DIR = Path(__file__).parent.parent.parent.resolve()
+    if str(BASE_DIR) not in sys.path:
+        sys.path.insert(0, str(BASE_DIR))
+
+    from db_helpers import (
+        get_all_assignments, 
+        add_assignment, 
+        remove_assignment_by_id,
+        get_managers_for_assignments,
+        get_members_for_assignments
+    )
+
+    if request.method == "POST":
+        action = request.form.get("action")
+
+        if action == "add":
+            manager = request.form.get("manager")
+            member = request.form.get("member")
+
+            if manager and member:
+                if add_assignment(manager, member):
+                    flash(f"Asignación creada: {member} → {manager}", "success")
+                else:
+                    flash("Error al crear asignación", "error")
+
+        elif action == "remove":
+            assignment_id = request.form.get("assignment_id")
+            if assignment_id:
+                if remove_assignment_by_id(int(assignment_id)):
+                    flash("Asignación eliminada", "success")
+                else:
+                    flash("Error al eliminar asignación", "error")
+
+        return redirect(url_for("admin.asignaciones_equipo"))
+
+    # GET: mostrar página
+    asignaciones = get_all_assignments()
+    managers = get_managers_for_assignments()
+    members = get_members_for_assignments()
+
+    return render_template(
+        "admin/asignaciones_equipo.html",
+        asignaciones=asignaciones,
+        managers=managers,
+        members=members
+    )
+
+
+# ============================================================================
+# RUTAS DE LÍNEAS DE CRÉDITO
+# ============================================================================
 
 @admin_bp.route("/lineas/nueva", methods=["POST"])
 @login_required
-@requiere_permiso("cfg_lin_editar")
 def crear_linea_credito():
     """Crear nueva línea de crédito"""
     import sys
@@ -311,27 +508,31 @@ def crear_linea_credito():
     if str(BASE_DIR) not in sys.path:
         sys.path.insert(0, str(BASE_DIR))
     
+    if not tiene_alguno_de(["cfg_lin_editar", "cfg_tasas_editar"]):
+        flash("No tienes permiso para crear líneas de crédito", "warning")
+        return redirect(url_for("admin.admin_panel"))
+
     from db_helpers import cargar_configuracion, guardar_configuracion
     from db_helpers_scoring_linea import crear_config_scoring_linea_defecto
     from ..utils.formatting import parse_currency_value
-    
+
     try:
         nombre = request.form.get("nombre", "").strip()
-        
+
         if not nombre:
             flash("El nombre de la línea es requerido", "error")
-            return redirect(url_for("admin.admin_panel"))
-        
+            return redirect(url_for("admin.admin_panel") + "#TasasCredito")
+
         config = cargar_configuracion()
         lineas = config.get("LINEAS_CREDITO", {})
-        
+
         if nombre in lineas:
             flash(f"La línea '{nombre}' ya existe", "error")
-            return redirect(url_for("admin.admin_panel"))
-        
+            return redirect(url_for("admin.admin_panel") + "#TasasCredito")
+
         # Crear nueva línea
         tasa_anual = float(request.form.get("tasa_anual", 25))
-        
+
         lineas[nombre] = {
             "descripcion": request.form.get("descripcion", ""),
             "monto_min": parse_currency_value(request.form.get("monto_min", 500000)),
@@ -345,35 +546,33 @@ def crear_linea_credito():
             "permite_desembolso_neto": request.form.get("permite_desembolso_neto") == "on",
             "desembolso_por_defecto": request.form.get("desembolso_por_defecto", "completo")
         }
-        
+
         config["LINEAS_CREDITO"] = lineas
         guardar_configuracion(config)
-        
+
         # Crear configuración de scoring por defecto para la nueva línea
-        # Primero necesitamos obtener el ID de la línea recién creada
         from database import conectar_db
         conn = conectar_db()
         cursor = conn.cursor()
         cursor.execute("SELECT id FROM lineas_credito WHERE nombre = ?", (nombre,))
         row = cursor.fetchone()
         conn.close()
-        
+
         if row:
             linea_id = row[0]
             crear_config_scoring_linea_defecto(linea_id, tasa_anual)
-        
+
         flash(f"Línea '{nombre}' creada exitosamente", "success")
-        
+
     except Exception as e:
         traceback.print_exc()
         flash(f"Error al crear línea: {str(e)}", "error")
-    
-    return redirect(url_for("admin.admin_panel"))
+
+    return redirect(url_for("admin.admin_panel") + "#TasasCredito")
 
 
 @admin_bp.route("/lineas/eliminar", methods=["POST"])
 @login_required
-@requiere_permiso("cfg_lin_editar")
 def eliminar_linea_credito():
     """Eliminar línea de crédito (soft delete)"""
     import sys
@@ -382,25 +581,33 @@ def eliminar_linea_credito():
     if str(BASE_DIR) not in sys.path:
         sys.path.insert(0, str(BASE_DIR))
     
+    if not tiene_alguno_de(["cfg_lin_editar", "cfg_tasas_editar"]):
+        flash("No tienes permiso para eliminar líneas de crédito", "warning")
+        return redirect(url_for("admin.admin_panel"))
+
     from db_helpers import eliminar_linea_credito_db
-    
+
     try:
         nombre = request.form.get("nombre")
-        
+
         if not nombre:
             flash("Nombre de línea no especificado", "error")
-            return redirect(url_for("admin.admin_panel"))
-        
+            return redirect(url_for("admin.admin_panel") + "#TasasCredito")
+
         if eliminar_linea_credito_db(nombre):
             flash(f"Línea '{nombre}' eliminada", "success")
         else:
             flash(f"Error al eliminar línea '{nombre}'", "error")
-        
+
     except Exception as e:
         flash(f"Error al eliminar línea: {str(e)}", "error")
-    
-    return redirect(url_for("admin.admin_panel"))
 
+    return redirect(url_for("admin.admin_panel") + "#TasasCredito")
+
+
+# ============================================================================
+# RUTAS DE SCORING
+# ============================================================================
 
 @admin_bp.route("/scoring/guardar", methods=["POST"])
 @login_required
@@ -412,22 +619,22 @@ def guardar_scoring():
     BASE_DIR = Path(__file__).parent.parent.parent.resolve()
     if str(BASE_DIR) not in sys.path:
         sys.path.insert(0, str(BASE_DIR))
-    
+
     from db_helpers import guardar_scoring as db_guardar_scoring
-    
+
     try:
         data = request.get_json()
-        
+
         if not data:
             return jsonify({"error": "No se recibieron datos"}), 400
-        
+
         db_guardar_scoring(data)
-        
+
         return jsonify({
             "success": True,
             "message": "Configuración de scoring guardada"
         })
-        
+
     except Exception as e:
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500

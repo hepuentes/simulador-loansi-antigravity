@@ -1,6 +1,7 @@
 """
 API_ROUTES.PY - Rutas de la API REST
 =====================================
+CORREGIDO: 2026-01-18 - Agregado success:true a endpoints que lo necesitan
 """
 
 from flask import request, jsonify, session
@@ -129,7 +130,7 @@ def api_capacidad_config():
 
 @api_bp.route("/comite/pendientes", methods=["GET"])
 @api_login_required
-@api_requiere_permiso("com_ver_casos")
+@api_requiere_permiso("com_ver_todos")
 def api_comite_pendientes():
     """Obtener casos pendientes del comité"""
     import sys
@@ -143,6 +144,7 @@ def api_comite_pendientes():
     casos = obtener_casos_comite({"estado_comite": "pending"})
     
     return jsonify({
+        "success": True,
         "casos": casos,
         "total": len(casos)
     })
@@ -160,12 +162,32 @@ def api_detalle_evaluacion(timestamp):
     
     from db_helpers import obtener_evaluacion_por_timestamp
     
-    evaluacion = obtener_evaluacion_por_timestamp(timestamp)
-    
-    if not evaluacion:
-        return jsonify({"error": "Evaluación no encontrada"}), 404
-    
-    return jsonify(evaluacion)
+    try:
+        evaluacion = obtener_evaluacion_por_timestamp(timestamp)
+        
+        if not evaluacion:
+            return jsonify({
+                "success": False,
+                "error": "Evaluación no encontrada"
+            }), 404
+        
+        # Asegurar que los campos críticos existen
+        if 'monto_solicitado' not in evaluacion:
+            evaluacion['monto_solicitado'] = 0
+        if 'resultado' not in evaluacion:
+            evaluacion['resultado'] = {}
+        
+        return jsonify({
+            "success": True,
+            "evaluacion": evaluacion
+        })
+        
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
 
 
 @api_bp.route("/badge-count", methods=["GET"])
@@ -190,12 +212,18 @@ def api_badge_count():
     
     # Casos nuevos para el asesor
     if username:
-        response["casos_nuevos"] = contar_casos_nuevos_asesor(username)
+        try:
+            response["casos_nuevos"] = contar_casos_nuevos_asesor(username)
+        except:
+            response["casos_nuevos"] = 0
     
     # Pendientes de comité (para admin y comité)
     if rol in ["admin", "admin_tecnico", "comite_credito"]:
-        casos_pendientes = obtener_casos_comite({"estado_comite": "pending"})
-        response["pendientes_comite"] = len(casos_pendientes)
+        try:
+            casos_pendientes = obtener_casos_comite({"estado_comite": "pending"})
+            response["pendientes_comite"] = len(casos_pendientes)
+        except:
+            response["pendientes_comite"] = 0
     
     return jsonify(response)
 
@@ -220,6 +248,7 @@ def api_usuarios_lista():
     usuarios = obtener_usuarios_completos()
     
     return jsonify({
+        "success": True,
         "usuarios": usuarios,
         "total": len(usuarios)
     })
@@ -237,16 +266,31 @@ def api_usuario_id(username):
     
     from database import conectar_db
     
-    conn = conectar_db()
-    cursor = conn.cursor()
-    cursor.execute("SELECT id FROM usuarios WHERE username = ?", (username,))
-    row = cursor.fetchone()
-    conn.close()
-    
-    if row:
-        return jsonify({"id": row[0], "username": username})
-    
-    return jsonify({"error": "Usuario no encontrado"}), 404
+    try:
+        conn = conectar_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM usuarios WHERE username = ? AND activo = 1", (username,))
+        row = cursor.fetchone()
+        conn.close()
+        
+        if row:
+            return jsonify({
+                "success": True,
+                "id": row[0],
+                "username": username
+            })
+        
+        return jsonify({
+            "success": False,
+            "error": "Usuario no encontrado"
+        }), 404
+        
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
 
 
 # ============================================================================
@@ -263,14 +307,25 @@ def api_scoring_lineas():
     if str(BASE_DIR) not in sys.path:
         sys.path.insert(0, str(BASE_DIR))
     
-    from db_helpers_scoring_linea import obtener_lineas_credito_scoring
-    
-    lineas = obtener_lineas_credito_scoring()
-    
-    return jsonify({
-        "lineas": lineas,
-        "total": len(lineas)
-    })
+    try:
+        from db_helpers_scoring_linea import obtener_lineas_credito_scoring
+        
+        lineas = obtener_lineas_credito_scoring()
+        
+        # CORRECCIÓN: El JavaScript espera success: true
+        return jsonify({
+            "success": True,
+            "lineas": lineas,
+            "total": len(lineas)
+        })
+        
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "lineas": []
+        })
 
 
 @api_bp.route("/scoring/linea/<int:linea_id>/config", methods=["GET"])
@@ -283,11 +338,22 @@ def api_scoring_linea_config(linea_id):
     if str(BASE_DIR) not in sys.path:
         sys.path.insert(0, str(BASE_DIR))
     
-    from db_helpers_scoring_linea import obtener_config_scoring_linea
-    
-    config = obtener_config_scoring_linea(linea_id)
-    
-    return jsonify(config)
+    try:
+        from db_helpers_scoring_linea import obtener_config_scoring_linea
+        
+        config = obtener_config_scoring_linea(linea_id)
+        
+        return jsonify({
+            "success": True,
+            "config": config
+        })
+        
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        })
 
 
 @api_bp.route("/scoring/linea/<int:linea_id>/config", methods=["POST"])
@@ -307,7 +373,7 @@ def api_scoring_linea_guardar(linea_id):
         data = request.get_json()
         
         if not data:
-            return jsonify({"error": "No se recibieron datos"}), 400
+            return jsonify({"success": False, "error": "No se recibieron datos"}), 400
         
         if guardar_config_scoring_linea(linea_id, data):
             return jsonify({
@@ -315,11 +381,11 @@ def api_scoring_linea_guardar(linea_id):
                 "message": "Configuración guardada"
             })
         else:
-            return jsonify({"error": "Error al guardar configuración"}), 500
+            return jsonify({"success": False, "error": "Error al guardar configuración"}), 500
         
     except Exception as e:
         traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @api_bp.route("/scoring/linea/<int:linea_id>/niveles-riesgo", methods=["GET"])
@@ -332,14 +398,24 @@ def api_scoring_niveles_riesgo(linea_id):
     if str(BASE_DIR) not in sys.path:
         sys.path.insert(0, str(BASE_DIR))
     
-    from db_helpers_scoring_linea import obtener_niveles_riesgo_linea
-    
-    niveles = obtener_niveles_riesgo_linea(linea_id)
-    
-    return jsonify({
-        "niveles": niveles,
-        "total": len(niveles)
-    })
+    try:
+        from db_helpers_scoring_linea import obtener_niveles_riesgo_linea
+        
+        niveles = obtener_niveles_riesgo_linea(linea_id)
+        
+        return jsonify({
+            "success": True,
+            "niveles": niveles,
+            "total": len(niveles)
+        })
+        
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "niveles": []
+        })
 
 
 @api_bp.route("/scoring/linea/<int:linea_id>/niveles-riesgo", methods=["POST"])
@@ -359,7 +435,7 @@ def api_scoring_niveles_guardar(linea_id):
         data = request.get_json()
         
         if not data or 'niveles' not in data:
-            return jsonify({"error": "Datos de niveles no especificados"}), 400
+            return jsonify({"success": False, "error": "Datos de niveles no especificados"}), 400
         
         if guardar_niveles_riesgo_linea(linea_id, data['niveles']):
             return jsonify({
@@ -367,11 +443,11 @@ def api_scoring_niveles_guardar(linea_id):
                 "message": "Niveles de riesgo guardados"
             })
         else:
-            return jsonify({"error": "Error al guardar niveles"}), 500
+            return jsonify({"success": False, "error": "Error al guardar niveles"}), 500
         
     except Exception as e:
         traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 # ============================================================================
@@ -380,7 +456,7 @@ def api_scoring_niveles_guardar(linea_id):
 
 @api_bp.route("/credito/marcar-desembolsado", methods=["POST"])
 @api_login_required
-@api_requiere_permiso("est_marcar_desembolsado")
+@api_requiere_permiso("com_marcar_desembolso")
 def api_marcar_desembolsado():
     """Marcar un crédito como desembolsado"""
     import sys
@@ -389,7 +465,10 @@ def api_marcar_desembolsado():
     if str(BASE_DIR) not in sys.path:
         sys.path.insert(0, str(BASE_DIR))
     
-    from db_helpers_estados import marcar_desembolsado
+    try:
+        from db_helpers_estados import marcar_desembolsado
+    except ImportError:
+        return jsonify({"success": False, "error": "Módulo de estados no disponible"}), 500
     
     try:
         data = request.get_json()
@@ -398,7 +477,7 @@ def api_marcar_desembolsado():
         comentario = data.get("comentario")
         
         if not timestamp:
-            return jsonify({"error": "Timestamp no especificado"}), 400
+            return jsonify({"success": False, "error": "Timestamp no especificado"}), 400
         
         resultado = marcar_desembolsado(
             timestamp, 
@@ -413,12 +492,12 @@ def api_marcar_desembolsado():
         
     except Exception as e:
         traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @api_bp.route("/credito/marcar-desistido", methods=["POST"])
 @api_login_required
-@api_requiere_permiso("est_marcar_desistido")
+@api_requiere_permiso("com_marcar_desistido")
 def api_marcar_desistido():
     """Marcar un crédito como desistido"""
     import sys
@@ -427,7 +506,10 @@ def api_marcar_desistido():
     if str(BASE_DIR) not in sys.path:
         sys.path.insert(0, str(BASE_DIR))
     
-    from db_helpers_estados import marcar_desistido
+    try:
+        from db_helpers_estados import marcar_desistido
+    except ImportError:
+        return jsonify({"success": False, "error": "Módulo de estados no disponible"}), 500
     
     try:
         data = request.get_json()
@@ -436,7 +518,7 @@ def api_marcar_desistido():
         motivo = data.get("motivo")
         
         if not timestamp:
-            return jsonify({"error": "Timestamp no especificado"}), 400
+            return jsonify({"success": False, "error": "Timestamp no especificado"}), 400
         
         resultado = marcar_desistido(
             timestamp,
@@ -451,7 +533,7 @@ def api_marcar_desistido():
         
     except Exception as e:
         traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @api_bp.route("/credito/estadisticas-estados", methods=["GET"])
@@ -464,8 +546,24 @@ def api_estadisticas_estados():
     if str(BASE_DIR) not in sys.path:
         sys.path.insert(0, str(BASE_DIR))
     
-    from db_helpers_estados import obtener_estadisticas_estados
-    
-    estadisticas = obtener_estadisticas_estados()
-    
-    return jsonify(estadisticas)
+    try:
+        from db_helpers_estados import obtener_estadisticas_estados
+        
+        estadisticas = obtener_estadisticas_estados()
+        
+        return jsonify({
+            "success": True,
+            "estadisticas": estadisticas
+        })
+        
+    except ImportError:
+        return jsonify({
+            "success": False,
+            "error": "Módulo de estados no disponible"
+        }), 500
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500

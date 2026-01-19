@@ -942,7 +942,7 @@
 
         {% if tiene_alguno_de(['usr_permisos', 'usr_asignaciones_equipo']) %}
         <!-- Asignaciones de Equipo - Solo con permiso -->
-        <a href="{{ url_for('admin_asignaciones_equipo') }}" class="btn btn-outline-info mb-3">
+        <a href="{{ url_for('admin.asignaciones_equipo') }}" class="btn btn-outline-info mb-3">
             <i class="bi bi-people-fill me-1"></i>Asignaciones de Equipo
         </a>
         {% endif %}
@@ -2304,8 +2304,8 @@ function reindexarRangos() {
             <div>
                 <strong>Sistema de Scoring Multi-Línea</strong>
                 <p class="mb-0 mt-1">
-                    Configure criterios de evaluación, niveles de riesgo y factores de rechazo 
-                    <strong>independientes para cada línea de crédito</strong>. 
+                    Configure criterios de evaluación, niveles de riesgo y factores de rechazo
+                    <strong>independientes para cada línea de crédito</strong>.
                     Seleccione la línea que desea configurar en el selector superior.
                 </p>
             </div>
@@ -2335,26 +2335,26 @@ function reindexarRangos() {
     <!-- ================================================================== -->
     <ul class="nav nav-tabs mb-3" id="scoringLineaTabs" role="tablist">
         <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="niveles-linea-tab" data-bs-toggle="tab" 
+            <button class="nav-link active" id="niveles-linea-tab" data-bs-toggle="tab"
                     data-bs-target="#niveles-linea-content" type="button" role="tab">
                 <i class="bi bi-bar-chart-fill me-1"></i>Niveles de Riesgo
             </button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link" id="aprobacion-linea-tab" data-bs-toggle="tab" 
+            <button class="nav-link" id="aprobacion-linea-tab" data-bs-toggle="tab"
                     data-bs-target="#aprobacion-linea-content" type="button" role="tab">
                 <i class="bi bi-check-circle me-1"></i>Configuración de Aprobación
             </button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link" id="criterios-linea-tab" data-bs-toggle="tab" 
+            <button class="nav-link" id="criterios-linea-tab" data-bs-toggle="tab"
                     data-bs-target="#criterios-linea-content" type="button" role="tab">
                 <i class="bi bi-list-check me-1"></i>Criterios de Scoring
             </button>
         </li>
         <!-- Pestaña Global Legacy oculta - se mantiene como fallback interno -->
         <li class="nav-item ms-auto d-none" role="presentation">
-            <button class="nav-link text-secondary" id="global-legacy-tab" data-bs-toggle="tab" 
+            <button class="nav-link text-secondary" id="global-legacy-tab" data-bs-toggle="tab"
                     data-bs-target="#global-legacy-content" type="button" role="tab"
                     title="Configuración global (compatibilidad)">
                 <i class="bi bi-gear me-1"></i>Global (Legacy)
@@ -2364,7 +2364,7 @@ function reindexarRangos() {
 
     <!-- Contenido de las pestañas -->
     <div class="tab-content" id="scoringLineaTabsContent">
-        
+
         <!-- ============================================================ -->
         <!-- PESTAÑA: Niveles de Riesgo por Línea -->
         <!-- ============================================================ -->
@@ -2421,31 +2421,31 @@ function reindexarRangos() {
         <div class="tab-pane fade" id="global-legacy-content" role="tabpanel">
             <div class="alert alert-warning mb-3">
                 <i class="bi bi-exclamation-triangle me-2"></i>
-                <strong>Configuración Global (Legacy)</strong>: Esta configuración se usa como 
+                <strong>Configuración Global (Legacy)</strong>: Esta configuración se usa como
                 fallback cuando una línea de crédito no tiene configuración específica.
                 Se recomienda configurar cada línea individualmente.
             </div>
-            
+
             <div class="card">
                 <div class="card-header">
                     <ul class="nav nav-tabs card-header-tabs" id="scoringGlobalTabs" role="tablist">
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link active" id="niveles-global-tab" 
-                                    data-bs-toggle="tab" data-bs-target="#niveles-global-content" 
+                            <button class="nav-link active" id="niveles-global-tab"
+                                    data-bs-toggle="tab" data-bs-target="#niveles-global-content"
                                     type="button" role="tab">
                                 <i class="bi bi-bar-chart-fill me-1"></i>Niveles de Riesgo
                             </button>
                         </li>
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="criterios-global-tab" 
-                                    data-bs-toggle="tab" data-bs-target="#criterios-global-content" 
+                            <button class="nav-link" id="criterios-global-tab"
+                                    data-bs-toggle="tab" data-bs-target="#criterios-global-content"
                                     type="button" role="tab">
                                 <i class="bi bi-list-check me-1"></i>Criterios
                             </button>
                         </li>
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="aprobacion-global-tab" 
-                                    data-bs-toggle="tab" data-bs-target="#aprobacion-global-content" 
+                            <button class="nav-link" id="aprobacion-global-tab"
+                                    data-bs-toggle="tab" data-bs-target="#aprobacion-global-content"
                                     type="button" role="tab">
                                 <i class="bi bi-gear-fill me-1"></i>Aprobación
                             </button>
@@ -2454,7 +2454,7 @@ function reindexarRangos() {
                 </div>
                 <div class="card-body">
                     <div class="tab-content" id="scoringGlobalTabsContent">
-                        
+
                         <div class="tab-pane fade show active" id="niveles-global-content" role="tabpanel">
                             <!-- Sección de Niveles de Riesgo -->
                             <div class="scoring-section">
@@ -2581,7 +2581,7 @@ function reindexarRangos() {
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div class="tab-pane fade" id="criterios-global-content" role="tabpanel">
                             <div class="scoring-section">
                                 <div class="scoring-header d-flex justify-content-between align-items-center">
@@ -2741,7 +2741,7 @@ function reindexarRangos() {
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div class="tab-pane fade" id="aprobacion-global-content" role="tabpanel">
                             <div class="scoring-section">
                                 <div class="scoring-header d-flex justify-content-between align-items-center">
@@ -2839,7 +2839,7 @@ function reindexarRangos() {
                 </div>
             </div>
         </div>
-        
+
     </div><!-- /tab-content -->
 
 </div><!-- /Scoring tabcontent -->
@@ -2932,13 +2932,13 @@ function reindexarRangos() {
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
     }
-    
+
     #scoringLineaTabs .nav-link {
         white-space: nowrap;
         padding: 0.5rem 0.75rem;
         font-size: 0.85rem;
     }
-    
+
     #nivelesRiesgoLineaContainer .col-md-4 {
         margin-bottom: 1rem;
     }

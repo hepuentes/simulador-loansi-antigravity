@@ -4,6 +4,8 @@ APP - Factory de la aplicación Flask Loansi
 
 Este módulo implementa el patrón Application Factory para Flask.
 Permite crear instancias de la aplicación con diferentes configuraciones.
+
+CORREGIDO: 2026-01-18 - Agregado alias formatear_fecha para compatibilidad con templates
 """
 
 import os
@@ -20,10 +22,10 @@ if str(BASE_DIR) not in sys.path:
 def create_app(config_name=None):
     """
     Factory de la aplicación Flask.
-    
+
     Args:
         config_name: Nombre de la configuración ('development', 'production', 'testing')
-        
+
     Returns:
         Flask: Instancia configurada de la aplicación
     """
@@ -33,43 +35,41 @@ def create_app(config_name=None):
         template_folder=str(BASE_DIR / 'templates'),
         static_folder=str(BASE_DIR / 'static')
     )
-    
+
     # Cargar configuración
     from .config import get_config
     config = get_config(config_name)
     app.config.from_object(config)
-    
+
     # Configuración adicional
     app.config['PERMANENT_SESSION_LIFETIME'] = config.PERMANENT_SESSION_LIFETIME
-    
+
     # Inicializar extensiones
     from .extensions import init_extensions
     init_extensions(app)
-    
+
     # Registrar filtros Jinja2
     register_jinja_filters(app)
-    
+
     # Registrar context processors
     register_context_processors(app)
-    
+
     # Registrar manejadores de errores
     register_error_handlers(app)
-    
-    # Registrar blueprints (rutas)
-    # NOTA: Por ahora, las rutas se mantienen en flask_app.py principal
-    # para una migración gradual. Se pueden activar los blueprints aquí.
-    # from .routes import register_blueprints
-    # register_blueprints(app)
-    
+
+   # Registrar blueprints (rutas)
+    from .routes import register_blueprints
+    register_blueprints(app)
+
     # Inicializar sistema de permisos
     try:
         from permisos import inicializar_permisos
         inicializar_permisos(app)
     except Exception as e:
         print(f"⚠️ Error inicializando permisos: {e}")
-    
+
     print(f"✅ Aplicación Loansi creada con configuración: {config_name or 'default'}")
-    
+
     return app
 
 
@@ -77,19 +77,27 @@ def register_jinja_filters(app):
     """Registra filtros personalizados para Jinja2"""
     from .utils.formatting import formatear_monto, formatear_con_miles
     from .utils.timezone import formatear_fecha_colombia
-    
+
     @app.template_filter('formato_moneda')
     def formato_moneda_filter(valor):
         return formatear_monto(valor)
-    
+
     @app.template_filter('formato_miles')
     def formato_miles_filter(numero):
         return formatear_con_miles(numero)
-    
+
     @app.template_filter('formato_fecha')
     def formato_fecha_filter(fecha):
         return formatear_fecha_colombia(fecha)
     
+    # =====================================================
+    # CRÍTICO: Alias para compatibilidad con templates
+    # Algunos templates usan 'formatear_fecha' en lugar de 'formato_fecha'
+    # =====================================================
+    @app.template_filter('formatear_fecha')
+    def formatear_fecha_filter(fecha):
+        return formatear_fecha_colombia(fecha)
+
     @app.template_filter('tojson_safe')
     def tojson_safe_filter(obj):
         """Serializa a JSON de forma segura para templates"""
@@ -99,7 +107,7 @@ def register_jinja_filters(app):
 
 def register_context_processors(app):
     """Registra context processors para templates"""
-    
+
     @app.context_processor
     def inject_navbar_stats():
         """Inyecta estadísticas del navbar en todos los templates"""
@@ -113,7 +121,7 @@ def register_context_processors(app):
             except Exception as e:
                 print(f"⚠️ Error obteniendo navbar stats: {e}")
         return {'navbar_stats': {'items': []}}
-    
+
     @app.context_processor
     def inject_user_info():
         """Inyecta información del usuario en todos los templates"""
@@ -123,7 +131,7 @@ def register_context_processors(app):
             'user_rol': session.get('rol', 'asesor'),
             'user_username': session.get('username', '')
         }
-    
+
     @app.context_processor
     def inject_theme():
         """Inyecta configuración de tema"""
@@ -135,7 +143,7 @@ def register_context_processors(app):
 def register_error_handlers(app):
     """Registra manejadores de errores HTTP"""
     from flask import render_template, jsonify, request
-    
+
     @app.errorhandler(400)
     def bad_request_error(error):
         if request.is_json or request.path.startswith('/api/'):
@@ -143,9 +151,9 @@ def register_error_handlers(app):
                 'error': 'Solicitud incorrecta',
                 'code': 'BAD_REQUEST'
             }), 400
-        return render_template('cliente/error.html', 
+        return render_template('cliente/error.html',
                              mensaje='Solicitud incorrecta'), 400
-    
+
     @app.errorhandler(403)
     def forbidden_error(error):
         if request.is_json or request.path.startswith('/api/'):
@@ -153,9 +161,9 @@ def register_error_handlers(app):
                 'error': 'Acceso denegado',
                 'code': 'FORBIDDEN'
             }), 403
-        return render_template('cliente/error.html', 
+        return render_template('cliente/error.html',
                              mensaje='No tienes permiso para acceder a esta página'), 403
-    
+
     @app.errorhandler(404)
     def not_found_error(error):
         if request.is_json or request.path.startswith('/api/'):
@@ -163,9 +171,9 @@ def register_error_handlers(app):
                 'error': 'Recurso no encontrado',
                 'code': 'NOT_FOUND'
             }), 404
-        return render_template('cliente/error.html', 
+        return render_template('cliente/error.html',
                              mensaje='Página no encontrada'), 404
-    
+
     @app.errorhandler(500)
     def internal_error(error):
         if request.is_json or request.path.startswith('/api/'):
@@ -173,12 +181,12 @@ def register_error_handlers(app):
                 'error': 'Error interno del servidor',
                 'code': 'INTERNAL_ERROR'
             }), 500
-        return render_template('cliente/error.html', 
+        return render_template('cliente/error.html',
                              mensaje='Error interno del servidor'), 500
 
 
 # ============================================================================
 # VERSIÓN DEL SISTEMA
 # ============================================================================
-__version__ = '72.9'
-__version_date__ = '2026-01-16'
+__version__ = '75.11'
+__version_date__ = '2026-01-18'

@@ -27,20 +27,20 @@ def requiere_permiso(permiso):
         def decorated_function(*args, **kwargs):
             if not session.get("autorizado"):
                 return redirect(url_for("auth.login"))
-            
+
             # Importar función de permisos
             import sys
             from pathlib import Path
             BASE_DIR = Path(__file__).parent.parent.parent.resolve()
             if str(BASE_DIR) not in sys.path:
                 sys.path.insert(0, str(BASE_DIR))
-            
+
             from permisos import tiene_permiso
-            
+
             if not tiene_permiso(permiso):
                 flash("No tienes permiso para acceder a esta función", "error")
                 return redirect(url_for("main.dashboard"))
-            
+
             return f(*args, **kwargs)
         return decorated_function
     return decorator
@@ -56,18 +56,19 @@ def simulador_asesor():
     BASE_DIR = Path(__file__).parent.parent.parent.resolve()
     if str(BASE_DIR) not in sys.path:
         sys.path.insert(0, str(BASE_DIR))
-    
+
     from db_helpers import cargar_configuracion, cargar_scoring
-    
+
     config = cargar_configuracion()
     scoring = cargar_scoring()
-    
+
     lineas_credito = config.get("LINEAS_CREDITO", {})
     costos_asociados = config.get("COSTOS_ASOCIADOS", {})
     niveles_riesgo = scoring.get("niveles_riesgo", [])
-    
+
     return render_template(
         "asesor/simulador.html",
+        lineas=lineas_credito,
         lineas_credito=lineas_credito,
         costos_asociados=costos_asociados,
         niveles_riesgo=niveles_riesgo,
@@ -89,12 +90,12 @@ def capacidad_pago():
     BASE_DIR = Path(__file__).parent.parent.parent.resolve()
     if str(BASE_DIR) not in sys.path:
         sys.path.insert(0, str(BASE_DIR))
-    
+
     from db_helpers import cargar_configuracion
-    
+
     config = cargar_configuracion()
     parametros = config.get("PARAMETROS_CAPACIDAD_PAGO", {})
-    
+
     return render_template(
         "asesor/capacidad_pago.html",
         parametros=parametros
@@ -110,19 +111,19 @@ def historial_simulaciones():
     BASE_DIR = Path(__file__).parent.parent.parent.resolve()
     if str(BASE_DIR) not in sys.path:
         sys.path.insert(0, str(BASE_DIR))
-    
+
     from db_helpers import cargar_simulaciones, resolve_visible_usernames
     from permisos import obtener_permisos_usuario_actual
-    
+
     username = session.get("username")
     permisos = obtener_permisos_usuario_actual()
-    
+
     # Determinar qué simulaciones puede ver
     visibilidad = resolve_visible_usernames(username, permisos, contexto="simulaciones")
-    
+
     # Cargar simulaciones según visibilidad
     todas_simulaciones = cargar_simulaciones()
-    
+
     if visibilidad['scope'] == 'todos':
         simulaciones = todas_simulaciones
     elif visibilidad['scope'] == 'equipo':
@@ -131,7 +132,7 @@ def historial_simulaciones():
     else:
         # Solo propias
         simulaciones = [s for s in todas_simulaciones if s.get('asesor') == username]
-    
+
     return render_template(
         "asesor/historial_simulaciones.html",
         simulaciones=simulaciones,
@@ -149,28 +150,28 @@ def guardar_simulacion_endpoint():
     BASE_DIR = Path(__file__).parent.parent.parent.resolve()
     if str(BASE_DIR) not in sys.path:
         sys.path.insert(0, str(BASE_DIR))
-    
+
     from db_helpers import guardar_simulacion
     from ..utils.timezone import obtener_hora_colombia
-    
+
     try:
         data = request.get_json()
-        
+
         if not data:
             return jsonify({"error": "No se recibieron datos"}), 400
-        
+
         # Agregar metadata
         data["timestamp"] = obtener_hora_colombia().isoformat()
         data["asesor"] = session.get("username")
-        
+
         # Guardar simulación
         guardar_simulacion(data)
-        
+
         return jsonify({
             "success": True,
             "message": "Simulación guardada correctamente",
             "timestamp": data["timestamp"]
         })
-        
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500

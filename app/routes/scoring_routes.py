@@ -53,7 +53,7 @@ def requiere_permiso(permiso):
 
 @scoring_bp.route("/scoring")
 @login_required
-@requiere_permiso("sco_evaluar")
+@requiere_permiso("sco_ejecutar")
 def scoring_page():
     """Página de evaluación de scoring"""
     import sys
@@ -73,11 +73,46 @@ def scoring_page():
     niveles_riesgo = scoring.get("niveles_riesgo", [])
     factores_rechazo = scoring.get("factores_rechazo_automatico", [])
     
+    # Preparar criterios agrupados por sección para el template
+    scoring_criterios_agrupados = []
+    criterios_por_seccion = {}
+    
+    # Agrupar criterios por sección
+    for criterio_id, criterio_data in criterios.items():
+        seccion_id = criterio_data.get("seccion", "otros")
+        if seccion_id not in criterios_por_seccion:
+            criterios_por_seccion[seccion_id] = []
+        criterios_por_seccion[seccion_id].append({
+            "id": criterio_id,
+            **criterio_data
+        })
+    
+    # Construir estructura agrupada
+    for seccion in secciones:
+        seccion_id = seccion.get("id", "")
+        criterios_seccion = criterios_por_seccion.get(seccion_id, [])
+        if criterios_seccion:
+            scoring_criterios_agrupados.append({
+                "seccion": seccion,
+                "criterios": criterios_seccion
+            })
+    
+    # Agregar criterios sin sección asignada
+    criterios_sin_seccion = criterios_por_seccion.get("otros", [])
+    if criterios_sin_seccion:
+        scoring_criterios_agrupados.append({
+            "seccion": {"id": "otros", "nombre": "Otros Criterios", "icono": "bi-gear"},
+            "criterios": criterios_sin_seccion
+        })
+    
     return render_template(
         "scoring.html",
         lineas_credito=lineas_credito,
         criterios=criterios,
+        scoring_criterios=criterios,
+        scoring_criterios_agrupados=scoring_criterios_agrupados,
         secciones=secciones,
+        scoring_secciones=secciones,
         niveles_riesgo=niveles_riesgo,
         factores_rechazo=factores_rechazo,
         config_json=json.dumps({
@@ -90,7 +125,7 @@ def scoring_page():
 
 @scoring_bp.route("/scoring", methods=["POST"])
 @login_required
-@requiere_permiso("sco_evaluar")
+@requiere_permiso("sco_ejecutar")
 def calcular_scoring():
     """Procesar evaluación de scoring"""
     import sys
