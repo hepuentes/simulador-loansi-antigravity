@@ -53,13 +53,19 @@ print(user_data)
 
 ## PRINCIPIO HOLÍSTICO
 Una modificación puede afectar:
-- rutas
-- servicios
-- modelos
+- routes
+- services
+- models
+- utils
 - permisos
 - scoring
 - comité
+- static
 - templates
+- helpers
+- db_helpers
+- config.py
+- loansi.db
 
 SIEMPRE analizar el sistema completo antes de cambiar algo.
 
@@ -84,70 +90,35 @@ SIEMPRE analizar el sistema completo antes de cambiar algo.
 │   └── utils/
 ├── templates/
 ├── static/
-│   ├── css/
-│   │   ├── theme.css            # Temas claro/oscuro
-│   │   └── components.css       # Componentes
-│   └── js/
-├── run.py                       # Punto entrada
-├── loansi.db                    # Base datos
-└── db_helpers.py                # Helpers BD
-```
+├── run.py
+└── loansi.db
 
-## REGLAS DE SEGURIDAD OBLIGATORIAS
-1. CSRF: Todos los formularios DEBEN tener {{ csrf_token() }}
-2. SQL: SIEMPRE usar parámetros (?), NUNCA concatenar strings
-3. Sesiones: Usar decorador @no_cache_and_check_session
-4. Passwords: NUNCA en texto plano, usar hash
-5. Errores: NO exponer stack traces al usuario
+## SEGURIDAD
+- NO escribir credenciales ni tokens
+- NO exponer lógica de scoring al cliente
+- Toda ruta debe validar rol
+- CSRF obligatorio en formularios
 
-## REGLAS DE ARQUITECTURA
-1. Blueprints: Usar url_for('blueprint.funcion')
-2. Templates: Heredar de base.html
-3. CSS: Orden de carga → Bootstrap CDN → theme.css → components.css
-4. Responsive: Soportar 360px, 768px, 1024px+
-5. Migraciones BD: CREATE TABLE IF NOT EXISTS
+## GIT Y DEPLOY
 
-## REGLAS DE CÓDIGO
-1. Idioma comentarios: Español
-2. Imports: Ordenados (stdlib, third-party, local)
-3. Funciones: Nombres descriptivos en español o inglés consistente
-4. NO agregar librerías sin justificación
+- Los agentes trabajan SIEMPRE en el repo clonado local
+- NO hacer push automático sin aprobación del usuario
+- NO crear ramas innecesarias
+- Cambios deben quedar listos para commit único
 
-## API PYTHONANYWHERE
-Endpoint reload:
-POST https://www.pythonanywhere.com/api/v0/user/loansi/webapps/loansi.pythonanywhere.com/reload/
-Header: Authorization: Token 148b17024de328398c6e4ce725d07a926222ebe7
+Flujo oficial:
+1. Cambios locales
+2. Auditoría
+3. Validación de seguridad
+4. Testing funcional
+5. Aprobación del usuario
+6. Commit + push a GitHub
+7. Pull manual desde PythonAnywhere
+8. Reload manual de la webapp
 
-## COMANDOS DEPLOYMENT
-```bash
-# En PythonAnywhere Bash:
-cd /home/loansi/simulador
-git pull origin main
-# Luego: Web tab → Reload
-
-# Backup BD:
-cp loansi.db loansi.db.backup_$(date +%Y%m%d_%H%M%S)
-
-# Ver errores:
-tail -50 /var/log/loansi.pythonanywhere.com.error.log
-
-# Revertir:
-git checkout HEAD~1
-```
-
-## DATOS SENSIBLES QUE MANEJA EL SISTEMA
-- Cédula/identificación
-- Ingresos financieros
-- Score crediticio
-- Historial préstamos
-- Datos contacto
-- Contraseñas (hasheadas)
-
-## MODO DE TRABAJO
-- Agentes trabajan AUTÓNOMOS
-- Usuario solo APRUEBA o DESAPRUEBA
-- NO dar instrucciones manuales al usuario, solo seria el ultimo recursos si no puedes acceeder o probar alguna funcionalidad.
-- Ejecutar cambios directamente apenas se aprueben todos los cambios de cada agente, envia los cambios al repo de git para actulizarlo 
-luego de ello envia de git a pythonanywhere para actulizarlo en la web app, si no es posible este ultimo paso indicar al usuario como ejecutar el comadno en bash 
-de pythonanyhwre para recibir los cambios actulizados.
-- Pedir aprobación antes de acciones destructivas
+## MODO DE TRABAJO DE LOS AGENTES
+- Autónomos
+- Especializados
+- No interactúan con el usuario
+- Solo el usuario APRUEBA o RECHAZA
+- Pedir confirmación antes de acciones destructivas
