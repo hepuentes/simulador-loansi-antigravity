@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -10,6 +11,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
 </head>
+
 <body>
     {% include 'partials/navbar_asesor.html' %}
     <div class="container-fluid">
@@ -20,10 +22,11 @@
                     <h2><i class="bi bi-people-fill me-2"></i>Comité de Crédito</h2>
                     <div>
                         {% set rol = session.get('rol', '') %}
-                        {% set inicio_url = '/admin' if rol == 'admin' or (rol == 'admin_tecnico' and tiene_permiso('admin_panel_acceso')) else '/dashboard' %}
+                        {% set inicio_url = '/admin' if rol == 'admin' or (rol == 'admin_tecnico' and
+                        tiene_permiso('admin_panel_acceso')) else '/dashboard' %}
                         <button class="btn btn-outline-secondary" onclick="window.location.href='{{ inicio_url }}'">
-                        <i class="bi bi-arrow-left me-1"></i>Volver al Inicio
-                    </button>
+                            <i class="bi bi-arrow-left me-1"></i>Volver al Inicio
+                        </button>
                     </div>
                 </div>
             </div>
@@ -58,23 +61,27 @@
             <div class="col-12">
                 <ul class="nav nav-tabs mb-4" id="comiteTabs" role="tablist">
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="pendientes-tab" data-bs-toggle="tab" data-bs-target="#pendientes" type="button">
+                        <button class="nav-link active" id="pendientes-tab" data-bs-toggle="tab"
+                            data-bs-target="#pendientes" type="button">
                             <i class="bi bi-clock-history me-1"></i>Pendientes
                             {% if stats.pendientes > 0 %}
-                            <span class="badge" style="background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%); color: #000;">
+                            <span class="badge"
+                                style="background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%); color: #000;">
                                 {{ stats.pendientes }}
                             </span>
                             {% endif %}
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="decisiones-tab" data-bs-toggle="tab" data-bs-target="#decisiones" type="button">
+                        <button class="nav-link" id="decisiones-tab" data-bs-toggle="tab" data-bs-target="#decisiones"
+                            type="button">
                             <i class="bi bi-check2-all me-1"></i>Decisiones Recientes
                         </button>
                     </li>
                     {% if puede_ver_config %}
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="configuracion-tab" data-bs-toggle="tab" data-bs-target="#configuracion" type="button">
+                        <button class="nav-link" id="configuracion-tab" data-bs-toggle="tab"
+                            data-bs-target="#configuracion" type="button">
                             <i class="bi bi-gear me-1"></i>Configuración
                         </button>
                     </li>
@@ -94,8 +101,10 @@
                         <div class="row">
                             {% for caso in casos_pendientes %}
                             <div class="col-md-6 mb-4">
-                                <div class="card {% if caso.alerta_tiempo %}border-danger{% else %}border-warning{% endif %}">
-                                    <div class="card-header {% if caso.alerta_tiempo %}bg-danger text-white{% else %}bg-warning{% endif %}">
+                                <div
+                                    class="card {% if caso.alerta_tiempo %}border-danger{% else %}border-warning{% endif %}">
+                                    <div
+                                        class="card-header {% if caso.alerta_tiempo %}bg-danger text-white{% else %}bg-warning{% endif %}">
                                         <div class="d-flex justify-content-between align-items-center">
                                             <span><i class="bi bi-person-fill me-1"></i>{{ caso.cliente }}</span>
                                             <span class="badge bg-dark">{{ caso.tiempo_espera_horas }}h esperando</span>
@@ -120,11 +129,14 @@
                                             </div>
                                             <div class="col-4">
                                                 <small class="text-muted">DataCrédito:</small><br>
-                                                <h4 class="mb-0">{{ caso.datacredito or caso.puntaje_datacredito or 'N/A' }}</h4>
+                                                <h4 class="mb-0">{{ caso.datacredito or caso.puntaje_datacredito or
+                                                    'N/A' }}</h4>
                                             </div>
                                             <div class="col-4">
                                                 <small class="text-muted">Nivel:</small><br>
-                                                <span class="badge" style="background-color: {{ caso.resultado.get('color', '#6c757d') }}; font-size: 0.9rem;">{{ caso.resultado.nivel }}</span>
+                                                <span class="badge"
+                                                    style="background-color: {{ caso.resultado.get('color', '#6c757d') }}; font-size: 0.9rem;">{{
+                                                    caso.resultado.nivel }}</span>
                                             </div>
                                         </div>
 
@@ -132,7 +144,8 @@
                                         <div class="row mb-3">
                                             <div class="col-12">
                                                 <small class="text-muted">Monto Solicitado:</small><br>
-                                                <h5 class="mb-0 text-success">${{ "{:,.0f}".format(caso.monto_solicitado).replace(",", ".") }}</h5>
+                                                <h5 class="mb-0 text-success">${{
+                                                    "{:,.0f}".format(caso.monto_solicitado).replace(",", ".") }}</h5>
                                             </div>
                                         </div>
                                         {% endif %}
@@ -143,25 +156,30 @@
                                             <small>{{ caso.get('razon_comite', 'Sin información') }}</small>
                                         </div>
 
-                                        <div class="alert alert-warning mb-3" style="background-color: rgba(255, 193, 7, 0.1);">
+                                        <div class="alert alert-warning mb-3"
+                                            style="background-color: rgba(255, 193, 7, 0.1);">
                                             <i class="bi bi-exclamation-triangle-fill me-1"></i>
                                             <strong>Acción requerida:</strong><br>
-                                            <small>El asesor debe enviar el reporte de DataCrédito del cliente al administrador para su evaluación manual.</small>
+                                            <small>El asesor debe enviar el reporte de DataCrédito del cliente al
+                                                administrador para su evaluación manual.</small>
                                         </div>
 
                                         <div class="d-flex gap-2 mb-2">
-                                            <button class="btn btn-info btn-sm flex-fill" onclick="verDetalle('{{ caso.timestamp }}')">
+                                            <button class="btn btn-info btn-sm flex-fill"
+                                                onclick="verDetalle('{{ caso.timestamp }}')">
                                                 <i class="bi bi-eye me-1"></i>VER DETALLE
                                             </button>
                                         </div>
                                         <div class="d-flex gap-2">
                                             {% if puede_aprobar %}
-                                            <button class="btn btn-success flex-fill" onclick="abrirModalParaAprobar('{{ caso.timestamp }}')">
+                                            <button class="btn btn-success flex-fill"
+                                                onclick="abrirModalParaAprobar('{{ caso.timestamp }}')">
                                                 <i class="bi bi-check-circle me-1"></i>APROBAR
                                             </button>
                                             {% endif %}
                                             {% if puede_rechazar %}
-                                            <button class="btn btn-danger flex-fill" onclick="mostrarModalRechazo('{{ caso.timestamp }}', '{{ caso.cliente }}')">
+                                            <button class="btn btn-danger flex-fill"
+                                                onclick="mostrarModalRechazo('{{ caso.timestamp }}', '{{ caso.cliente }}')">
                                                 <i class="bi bi-x-circle me-1"></i>RECHAZAR
                                             </button>
                                             {% endif %}
@@ -190,24 +208,30 @@
                                     <div class="row g-3 align-items-end">
                                         <div class="col-md-3">
                                             <label for="fechaDesdeDecisiones" class="form-label small">Desde</label>
-                                            <input type="date" class="form-control form-control-sm" id="fechaDesdeDecisiones">
+                                            <input type="date" class="form-control form-control-sm"
+                                                id="fechaDesdeDecisiones">
                                         </div>
                                         <div class="col-md-3">
                                             <label for="fechaHastaDecisiones" class="form-label small">Hasta</label>
-                                            <input type="date" class="form-control form-control-sm" id="fechaHastaDecisiones">
+                                            <input type="date" class="form-control form-control-sm"
+                                                id="fechaHastaDecisiones">
                                         </div>
                                         <div class="col-md-6">
-                                            <button onclick="aplicarFiltroFechasDecisiones()" class="btn btn-sm btn-primary me-2">
+                                            <button onclick="aplicarFiltroFechasDecisiones()"
+                                                class="btn btn-sm btn-primary me-2">
                                                 <i class="bi bi-filter"></i> Filtrar
                                             </button>
-                                            <button onclick="limpiarFiltroFechasDecisiones()" class="btn btn-sm btn-outline-secondary">
+                                            <button onclick="limpiarFiltroFechasDecisiones()"
+                                                class="btn btn-sm btn-outline-secondary">
                                                 <i class="bi bi-x-circle"></i> Limpiar
                                             </button>
                                         </div>
                                     </div>
                                     <!-- Alert de filtro activo -->
-                                    <div id="alertFiltroActivoDecisiones" class="alert alert-info alert-sm mt-2" style="display: none; padding: 0.5rem;">
-                                        <small><i class="bi bi-info-circle me-1"></i><span id="mensajeFiltroDecisiones"></span></small>
+                                    <div id="alertFiltroActivoDecisiones" class="alert alert-info alert-sm mt-2"
+                                        style="display: none; padding: 0.5rem;">
+                                        <small><i class="bi bi-info-circle me-1"></i><span
+                                                id="mensajeFiltroDecisiones"></span></small>
                                     </div>
                                 </div>
 
@@ -238,7 +262,8 @@
                                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
                                     <div>
                                         <label for="itemsPerPageDecisiones" class="me-2">Mostrar:</label>
-                                        <select id="itemsPerPageDecisiones" class="form-select form-select-sm d-inline-block w-auto">
+                                        <select id="itemsPerPageDecisiones"
+                                            class="form-select form-select-sm d-inline-block w-auto">
                                             <option value="10">10</option>
                                             <option value="20" selected>20</option>
                                             <option value="30">30</option>
@@ -261,66 +286,69 @@
                             <div class="card-body p-0">
                                 <div class="table-responsive">
                                     <table class="table table-hover align-middle mb-0" id="tablaDecisiones">
-                                <thead>
-                                    <tr>
-                                        <th>Cliente</th>
-                                        <th class="d-none d-md-table-cell">Asesor</th>
-                                        <th class="text-center">Score</th>
-                                        <th class="text-center">Decisión</th>
-                                        <th class="d-none d-lg-table-cell">Admin</th>
-                                        <th class="d-none d-lg-table-cell">Fecha</th>
-                                        <th class="text-center">Ver Detalle</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for decision in decisiones_recientes %}
-                                    <tr>
-                                        <td>
-                                            <i class="bi bi-person me-1"></i>{{ decision.cliente }}
-                                            <br class="d-md-none">
-                                            <small class="text-muted d-md-none">{{ decision.asesor }}</small>
-                                        </td>
-                                        <td class="d-none d-md-table-cell">{{ decision.asesor }}</td>
-                                        <td class="text-center"><span class="badge bg-primary">{{ decision.resultado.score }}</span></td>
-                                        <td class="text-center">
-                                            {% if decision.estado_comite == 'approved' %}
-                                            <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Aprobado</span>
-                                            {% elif decision.estado_comite == 'rejected' %}
-                                            <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Rechazado</span>
-                                            {% endif %}
-                                            <br class="d-lg-none">
-                                            <small class="text-muted d-lg-none">
-                                                {% if decision.decision_admin %}
-                                                    {{ decision.decision_admin.admin }}<br>
-                                                    {{ decision.decision_admin.timestamp[:10] }}
-                                                {% endif %}
-                                            </small>
-                                        </td>
-                                        <td class="d-none d-lg-table-cell">
-                                            {% if decision.decision_admin %}
-                                                {{ decision.decision_admin.admin }}
-                                            {% else %}
-                                                <span class="text-muted">N/A</span>
-                                            {% endif %}
-                                        </td>
-                                        <td class="d-none d-lg-table-cell">
-                                            {% if decision.decision_admin %}
-                                                {{ decision.decision_admin.timestamp[:16] | replace('T', ' ') }}
-                                            {% else %}
-                                                <span class="text-muted">N/A</span>
-                                            {% endif %}
-                                        </td>
-                                        <td class="text-center">
-                                            <button class="btn btn-sm btn-outline-primary"
-                                                    onclick="verDetalleDecision('{{ decision.timestamp }}')"
-                                                    title="Ver detalle de decisión">
-                                                <i class="bi bi-eye"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
+                                        <thead>
+                                            <tr>
+                                                <th>Cliente</th>
+                                                <th class="d-none d-md-table-cell">Asesor</th>
+                                                <th class="text-center">Score</th>
+                                                <th class="text-center">Decisión</th>
+                                                <th class="d-none d-lg-table-cell">Admin</th>
+                                                <th class="d-none d-lg-table-cell">Fecha</th>
+                                                <th class="text-center">Ver Detalle</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for decision in decisiones_recientes %}
+                                            <tr>
+                                                <td>
+                                                    <i class="bi bi-person me-1"></i>{{ decision.cliente }}
+                                                    <br class="d-md-none">
+                                                    <small class="text-muted d-md-none">{{ decision.asesor }}</small>
+                                                </td>
+                                                <td class="d-none d-md-table-cell">{{ decision.asesor }}</td>
+                                                <td class="text-center"><span class="badge bg-primary">{{
+                                                        decision.resultado.score }}</span></td>
+                                                <td class="text-center">
+                                                    {% if decision.estado_comite == 'approved' %}
+                                                    <span class="badge bg-success"><i
+                                                            class="bi bi-check-circle me-1"></i>Aprobado</span>
+                                                    {% elif decision.estado_comite == 'rejected' %}
+                                                    <span class="badge bg-danger"><i
+                                                            class="bi bi-x-circle me-1"></i>Rechazado</span>
+                                                    {% endif %}
+                                                    <br class="d-lg-none">
+                                                    <small class="text-muted d-lg-none">
+                                                        {% if decision.decision_admin %}
+                                                        {{ decision.decision_admin.admin }}<br>
+                                                        {{ decision.decision_admin.timestamp[:10] }}
+                                                        {% endif %}
+                                                    </small>
+                                                </td>
+                                                <td class="d-none d-lg-table-cell">
+                                                    {% if decision.decision_admin %}
+                                                    {{ decision.decision_admin.admin }}
+                                                    {% else %}
+                                                    <span class="text-muted">N/A</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td class="d-none d-lg-table-cell">
+                                                    {% if decision.decision_admin %}
+                                                    {{ decision.decision_admin.timestamp[:16] | replace('T', ' ') }}
+                                                    {% else %}
+                                                    <span class="text-muted">N/A</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td class="text-center">
+                                                    <button class="btn btn-sm btn-outline-primary"
+                                                        onclick="verDetalleDecision('{{ decision.timestamp }}')"
+                                                        title="Ver detalle de decisión">
+                                                        <i class="bi bi-eye"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
                         </div>
@@ -338,34 +366,43 @@
                                 <form id="formConfigComite">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <div class="row mb-3">
-                                    <div class="col-md-6">
-                                        <label class="form-label">Score Mínimo</label>
-                                        <input type="number" class="form-control" id="score_minimo" name="score_minimo"
-                                               value="{{ comite_config.score_minimo }}" min="0" max="100" step="0.1">
-                                            <small class="text-muted">Casos con score igual o superior a este valor pueden ir a comité</small>
+                                        <div class="col-md-6">
+                                            <label class="form-label">Score Mínimo</label>
+                                            <input type="number" class="form-control" id="score_minimo"
+                                                name="score_minimo" value="{{ comite_config.score_minimo }}" min="0"
+                                                max="100" step="0.1">
+                                            <small class="text-muted">Casos con score igual o superior a este valor
+                                                pueden ir a comité</small>
                                         </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label">Score Máximo</label>
-                                        <input type="number" class="form-control" id="score_maximo" name="score_maximo"
-                                               value="{{ comite_config.score_maximo }}" min="0" max="100" step="0.1">
-                                            <small class="text-muted">Casos con score hasta este valor pueden ir a comité</small>
+                                        <div class="col-md-6">
+                                            <label class="form-label">Score Máximo</label>
+                                            <input type="number" class="form-control" id="score_maximo"
+                                                name="score_maximo" value="{{ comite_config.score_maximo }}" min="0"
+                                                max="100" step="0.1">
+                                            <small class="text-muted">Casos con score hasta este valor pueden ir a
+                                                comité</small>
                                         </div>
                                     </div>
 
                                     <div class="row mb-3">
-                                    <div class="col-md-6">
-                                        <label class="form-label">DataCrédito Máximo</label>
-                                        <input type="number" class="form-control" id="datacredito_maximo" name="datacredito_maximo"
-                                               value="{{ comite_config.datacredito_maximo }}" min="0" max="999">
-                                            <small class="text-muted">Casos con DataCrédito por debajo de este valor requieren revisión</small>
+                                        <div class="col-md-6">
+                                            <label class="form-label">DataCrédito Máximo</label>
+                                            <input type="number" class="form-control" id="datacredito_maximo"
+                                                name="datacredito_maximo" value="{{ comite_config.datacredito_maximo }}"
+                                                min="0" max="999">
+                                            <small class="text-muted">Casos con DataCrédito por debajo de este valor
+                                                requieren revisión</small>
                                         </div>
                                         <div class="col-md-6">
                                             <div class="form-check mt-4">
-                                                <input class="form-check-input" type="checkbox" id="evaluar_comportamiento_interno" name="evaluar_comportamiento_interno" value="true"
-                                                       {% if comite_config.evaluar_comportamiento_interno %}checked{% endif %}>
+                                                <input class="form-check-input" type="checkbox"
+                                                    id="evaluar_comportamiento_interno"
+                                                    name="evaluar_comportamiento_interno" value="true" {% if
+                                                    comite_config.evaluar_comportamiento_interno %}checked{% endif %}>
                                                 <label class="form-check-label" for="evaluar_comportamiento_interno">
                                                     <strong>Evaluar Comportamiento Interno</strong><br>
-                                                    <small class="text-muted">Considerar criterios de comportamiento interno para casos borderline</small>
+                                                    <small class="text-muted">Considerar criterios de comportamiento
+                                                        interno para casos borderline</small>
                                                 </label>
                                             </div>
                                         </div>
@@ -375,30 +412,36 @@
 
                                     <h6 class="mb-3">Criterios de Comportamiento Interno (Mínimos Requeridos)</h6>
                                     <div class="row mb-3">
-                                    <div class="col-md-6">
-                                        <label class="form-label">Cupo Total Mínimo</label>
-                                        <input type="text" class="form-control" id="cupo_total_minimo" name="cupo_total_minimo"
-                                               value="{{ comite_config.criterios_comportamiento.cupo_total_minimo }}"
-                                               data-tipo="currency"
-                                               oninput="formatearMontoInput(this)">
+                                        <div class="col-md-6">
+                                            <label class="form-label">Cupo Total Mínimo</label>
+                                            <input type="text" class="form-control" id="cupo_total_minimo"
+                                                name="cupo_total_minimo"
+                                                value="{{ comite_config.criterios_comportamiento.cupo_total_minimo }}"
+                                                data-tipo="currency" oninput="formatearMontoInput(this)">
                                         </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label">Historial Pagos Mínimo (meses)</label>
-                                        <input type="number" class="form-control" id="historial_pagos_minimo" name="historial_pagos_minimo"
-                                               value="{{ comite_config.criterios_comportamiento.historial_pagos_minimo }}" min="0" max="12">
+                                        <div class="col-md-6">
+                                            <label class="form-label">Historial Pagos Mínimo (meses)</label>
+                                            <input type="number" class="form-control" id="historial_pagos_minimo"
+                                                name="historial_pagos_minimo"
+                                                value="{{ comite_config.criterios_comportamiento.historial_pagos_minimo }}"
+                                                min="0" max="12">
                                         </div>
                                     </div>
 
                                     <div class="row mb-4">
-                                    <div class="col-md-6">
-                                        <label class="form-label">Mora Reciente Máxima (días)</label>
-                                        <input type="number" class="form-control" id="mora_reciente_maxima" name="mora_reciente_maxima"
-                                               value="{{ comite_config.criterios_comportamiento.mora_reciente_maxima }}" min="0" max="365">
+                                        <div class="col-md-6">
+                                            <label class="form-label">Mora Reciente Máxima (días)</label>
+                                            <input type="number" class="form-control" id="mora_reciente_maxima"
+                                                name="mora_reciente_maxima"
+                                                value="{{ comite_config.criterios_comportamiento.mora_reciente_maxima }}"
+                                                min="0" max="365">
                                         </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label">Créditos Vigentes Mínimos</label>
-                                        <input type="number" class="form-control" id="creditos_vigentes_minimos" name="creditos_vigentes_minimos"
-                                               value="{{ comite_config.criterios_comportamiento.creditos_vigentes_minimos }}" min="0" max="10">
+                                        <div class="col-md-6">
+                                            <label class="form-label">Créditos Vigentes Mínimos</label>
+                                            <input type="number" class="form-control" id="creditos_vigentes_minimos"
+                                                name="creditos_vigentes_minimos"
+                                                value="{{ comite_config.criterios_comportamiento.creditos_vigentes_minimos }}"
+                                                min="0" max="10">
                                         </div>
                                         {% endif %}{# fin puede_ver_config #}
                                     </div>
@@ -410,7 +453,8 @@
                                     {% else %}
                                     <div class="alert alert-info">
                                         <i class="bi bi-info-circle me-2"></i>
-                                        Solo tienes permiso de visualización. Contacta al administrador para realizar cambios.
+                                        Solo tienes permiso de visualización. Contacta al administrador para realizar
+                                        cambios.
                                     </div>
                                     {% endif %}
                                 </form>
@@ -434,7 +478,8 @@
                     <!-- Contenido dinámico generado por JavaScript -->
                 </div>
                 <!-- NUEVA SECCIÓN: Modificaciones de Aprobación (FASE 3B) -->
-                <div class="card border-warning mb-3 mt-3" id="seccion-modificaciones-aprobacion" style="display: none;">
+                <div class="card border-warning mb-3 mt-3" id="seccion-modificaciones-aprobacion"
+                    style="display: none;">
                     <div class="card-header bg-warning text-dark d-flex align-items-center">
                         <i class="bi bi-pencil-square me-2"></i>
                         <strong>Modificaciones de Aprobación</strong>
@@ -445,14 +490,12 @@
                             <label for="monto_aprobado_input" class="form-label">
                                 <i class="bi bi-currency-dollar"></i> Monto a Aprobar
                             </label>
-                            <input type="text"
-                                   class="form-control"
-                                   id="monto_aprobado_input"
-                                   placeholder="Ingrese monto a aprobar (ej: 1500000)"
-                                   oninput="formatearMontoInput(this)">
+                            <input type="text" class="form-control" id="monto_aprobado_input"
+                                placeholder="Ingrese monto a aprobar (ej: 1500000)" oninput="formatearMontoInput(this)">
                             <div class="form-text">
                                 Monto solicitado: <strong id="monto_solicitado_display">$0</strong>
-                                <br><small class="text-muted">Puede aprobar cualquier monto igual o menor al solicitado. Dejar vacío para aprobar el monto completo.</small>
+                                <br><small class="text-muted">Puede aprobar cualquier monto igual o menor al solicitado.
+                                    Dejar vacío para aprobar el monto completo.</small>
                             </div>
                         </div>
 
@@ -467,7 +510,8 @@
                             </select>
                             <div class="form-text">
                                 Nivel calculado por el sistema: <strong id="nivel_calculado_display">-</strong>
-                                <br><small class="text-muted">Solo puede degradar el nivel (aumentar precaución), nunca mejorarlo.</small>
+                                <br><small class="text-muted">Solo puede degradar el nivel (aumentar precaución), nunca
+                                    mejorarlo.</small>
                             </div>
                         </div>
 
@@ -476,12 +520,11 @@
                             <label for="justificacion_textarea" class="form-label">
                                 <i class="bi bi-chat-left-text"></i> Justificación de Modificación
                             </label>
-                            <textarea class="form-control"
-                                      id="justificacion_textarea"
-                                      rows="3"
-                                      placeholder="Explique por qué modifica el monto o nivel de riesgo (opcional pero recomendado)"></textarea>
+                            <textarea class="form-control" id="justificacion_textarea" rows="3"
+                                placeholder="Explique por qué modifica el monto o nivel de riesgo (opcional pero recomendado)"></textarea>
                             <div class="form-text">
-                                <small class="text-muted">Recomendado si realiza modificaciones. Quedará registrado en el historial.</small>
+                                <small class="text-muted">Recomendado si realiza modificaciones. Quedará registrado en
+                                    el historial.</small>
                             </div>
                         </div>
 
@@ -498,11 +541,13 @@
 
                 <!-- Botones del modal -->
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-success" id="btn-guardar-modificaciones" onclick="guardarModificaciones()">
+                    <button type="button" class="btn btn-success" id="btn-guardar-modificaciones"
+                        onclick="guardarModificaciones()">
                         <i class="bi bi-save"></i> Guardar Cambios
                     </button>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                    <button type="button" class="btn btn-success btn-lg" onclick="aprobarCaso(timestampActual)" style="display: none;" id="btn-aprobar-desde-modal">
+                    <button type="button" class="btn btn-success btn-lg" onclick="aprobarCaso(timestampActual)"
+                        style="display: none;" id="btn-aprobar-desde-modal">
                         <i class="bi bi-check-circle"></i> APROBAR
                     </button>
                 </div>
@@ -755,6 +800,17 @@
             const asesor = ev.asesor || 'N/A';
             const lineaCredito = ev.linea_credito || ev.tipo_credito || 'N/A';
 
+            // 🛡️ Helper para prevenir XSS
+            const escapeHtml = (unsafe) => {
+                if (unsafe === null || unsafe === undefined) return '';
+                return String(unsafe)
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#039;");
+            };
+
             // Generar HTML de valores ingresados sección ORDENADA
             let htmlValoresIngresados = '';
             if (ev.criterios_detalle && Array.isArray(ev.criterios_detalle)) {
@@ -766,13 +822,13 @@
                                 <tr>
                                     <th style="width: 50%;">Criterio</th>
                                     <th style="width: 50%;">Valor Ingresado</th>
-                                </tr>
+                                    </tr>
                             </thead>
                             <tbody>
                                 ${ev.criterios_detalle.map(item => `
                                     <tr>
-                                        <td class="fw-medium">${item.nombre}</td>
-                                        <td>${item.valor || 'N/A'}</td>
+                                        <td class="fw-medium">${escapeHtml(item.nombre)}</td>
+                                        <td>${escapeHtml(item.valor) || 'N/A'}</td>
                                     </tr>
                                 `).join('')}
                             </tbody>
@@ -793,11 +849,12 @@
                             <tbody>
                                 ${Object.entries(ev.criterios_detalle).map(([criterio, datos]) => `
                                     <tr>
-                                        <td class="fw-medium">${criterio}</td>
-                                        <td>${datos.valor || 'N/A'}</td>
+                                        <td class="fw-medium">${escapeHtml(criterio)}</td>
+                                        <td>${escapeHtml(datos.valor) || 'N/A'}</td>
                                     </tr>
                                 `).join('')}
                             </tbody>
+
                         </table>
                     </div>
                 `;
@@ -1069,12 +1126,12 @@
                                     ` : ''}
 
                                     ${(() => {
-                                    // Determinar nivel a mostrar y su color
-                                    const nivelMostrar = ev.nivel_riesgo_ajustado || ev.nivel_riesgo || nivel;
-                                    const colores = obtenerColorNivel(nivelMostrar);
-                                    const borderColor = colores.bg;
+                            // Determinar nivel a mostrar y su color
+                            const nivelMostrar = ev.nivel_riesgo_ajustado || ev.nivel_riesgo || nivel;
+                            const colores = obtenerColorNivel(nivelMostrar);
+                            const borderColor = colores.bg;
 
-                                    return `
+                            return `
                                         <div class="col-md-6">
                                             <div class="card" style="border: 2px solid ${borderColor};">
                                                 <div class="card-body">
@@ -1115,7 +1172,7 @@
                                             </div>
                                         ` : ''}
                                     `;
-                                })()}
+                        })()}
                                 </div>
 
                                 ${ev.justificacion_modificacion ? `
@@ -1363,40 +1420,44 @@
         }
 
         // Confirmar rechazo
-        document.getElementById('btnConfirmarRechazo').addEventListener('click', async function() {
-            const motivo = document.getElementById('motivoRechazo').value.trim();
+        // Confirmar rechazo
+        const btnConfirmarRechazo = document.getElementById('btnConfirmarRechazo');
+        if (btnConfirmarRechazo) {
+            btnConfirmarRechazo.addEventListener('click', async function () {
+                const motivo = document.getElementById('motivoRechazo').value.trim();
 
-            if (!motivo) {
-                alert('Por favor ingrese el motivo del rechazo');
-                return;
-            }
-
-            try {
-                const response = await fetch('/admin/comite-credito/rechazar', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                    },
-                    body: JSON.stringify({
-                        timestamp: timestampActual,
-                        motivo: motivo
-                    })
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    alert('Caso rechazado exitosamente');
-                    location.reload();
-                } else {
-                    alert('Error: ' + (data.error || 'No se pudo rechazar el caso'));
+                if (!motivo) {
+                    alert('Por favor ingrese el motivo del rechazo');
+                    return;
                 }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Error de conexión al rechazar el caso');
-            }
-        });
+
+                try {
+                    const response = await fetch('/admin/comite-credito/rechazar', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                        },
+                        body: JSON.stringify({
+                            timestamp: timestampActual,
+                            motivo: motivo
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        alert('Caso rechazado exitosamente');
+                        location.reload();
+                    } else {
+                        alert('Error: ' + (data.error || 'No se pudo rechazar el caso'));
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Error de conexión al rechazar el caso');
+                }
+            });
+        }
 
         // ==================== FILTROS PARA DECISIONES RECIENTES ====================
         let currentPageDecisiones = 1;
@@ -1408,11 +1469,11 @@
         let filtroFechaHastaDecisiones = null;
 
         // Inicializar filtros cuando se carga la pestaña de decisiones
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             // Esperar a que se active la pestaña de decisiones
             const decisionesTab = document.getElementById('decisiones-tab');
             if (decisionesTab) {
-                decisionesTab.addEventListener('shown.bs.tab', function() {
+                decisionesTab.addEventListener('shown.bs.tab', function () {
                     inicializarFiltrosDecisiones();
                 });
             }
@@ -1428,7 +1489,7 @@
             // Event listeners
             const selectItems = document.getElementById('itemsPerPageDecisiones');
             if (selectItems) {
-                selectItems.addEventListener('change', function() {
+                selectItems.addEventListener('change', function () {
                     itemsPerPageDecisiones = parseInt(this.value);
                     currentPageDecisiones = 1;
                     updatePaginationDecisiones();
@@ -1458,7 +1519,7 @@
 
             // Botones de filtro por estado
             document.querySelectorAll('#filtrosDecisiones button').forEach(btn => {
-                btn.addEventListener('click', function() {
+                btn.addEventListener('click', function () {
                     // Desactivar todos
                     document.querySelectorAll('#filtrosDecisiones button').forEach(b => {
                         b.classList.remove('active', 'btn-primary');
@@ -1690,7 +1751,7 @@
         // ==================== FIN FILTROS DECISIONES ====================
 
         // Configuración del comité
-        document.getElementById('formConfigComite').addEventListener('submit', async function(e) {
+        document.getElementById('formConfigComite').addEventListener('submit', async function (e) {
             e.preventDefault();
 
             const formData = new FormData(this);
@@ -1730,9 +1791,9 @@
         function showFlashMessage(message, type) {
             // type puede ser: 'success', 'error', 'warning', 'info'
             const alertClass = type === 'success' ? 'alert-success' :
-                              type === 'error' ? 'alert-danger' :
-                              type === 'warning' ? 'alert-warning' :
-                              'alert-info';
+                type === 'error' ? 'alert-danger' :
+                    type === 'warning' ? 'alert-warning' :
+                        'alert-info';
 
             const alertHtml = `
                 <div class="alert ${alertClass} alert-dismissible fade show" role="alert" style="position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
@@ -1784,57 +1845,58 @@
         }
 
         // Iniciar polling al cargar la página
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             iniciarPolling();
         });
 
         // Detener polling al salir de la página
-        window.addEventListener('beforeunload', function() {
+        window.addEventListener('beforeunload', function () {
             if (pollingInterval) {
                 clearInterval(pollingInterval);
             }
         });
     </script>
-<script>
-// Formatear campos de moneda al cargar la página
-document.addEventListener('DOMContentLoaded', function() {
-    const camposCurrency = document.querySelectorAll('input[data-tipo="currency"]');
-    camposCurrency.forEach(input => {
-        if (input.value && !input.value.includes('.')) {
-            // Solo formatear si no tiene puntos ya
-            const valor = parseInt(input.value.replace(/[^\d]/g, ''));
-            if (!isNaN(valor)) {
-                input.value = valor.toLocaleString('es-CO');
-            }
-        }
-    });
-});
-</script>
-
-<script>
-// Función para abrir simulador desde decisión reciente (admin)
-function abrirSimuladorDesdeCasoAdmin(timestamp) {
-    const url = `/simulador?caso=${encodeURIComponent(timestamp)}`;
-    window.open(url, '_blank');
-}
-</script>
-
-<script>
-// Deshabilitar inputs de configuración si no puede editar
-document.addEventListener('DOMContentLoaded', function() {
-    {% if not puede_editar_config %}
-    // Deshabilitar todos los inputs del formulario de configuración
-    const formConfig = document.getElementById('formConfigComite');
-    if (formConfig) {
-        const inputs = formConfig.querySelectorAll('input, select, textarea');
-        inputs.forEach(input => {
-            input.disabled = true;
-            input.classList.add('disabled');
+    <script>
+        // Formatear campos de moneda al cargar la página
+        document.addEventListener('DOMContentLoaded', function () {
+            const camposCurrency = document.querySelectorAll('input[data-tipo="currency"]');
+            camposCurrency.forEach(input => {
+                if (input.value && !input.value.includes('.')) {
+                    // Solo formatear si no tiene puntos ya
+                    const valor = parseInt(input.value.replace(/[^\d]/g, ''));
+                    if (!isNaN(valor)) {
+                        input.value = valor.toLocaleString('es-CO');
+                    }
+                }
+            });
         });
-    }
-    {% endif %}
-});
-</script>
+    </script>
+
+    <script>
+        // Función para abrir simulador desde decisión reciente (admin)
+        function abrirSimuladorDesdeCasoAdmin(timestamp) {
+            const url = `/simulador?caso=${encodeURIComponent(timestamp)}`;
+            window.open(url, '_blank');
+        }
+    </script>
+
+    <script>
+        // Deshabilitar inputs de configuración si no puede editar
+        document.addEventListener('DOMContentLoaded', function () {
+            {% if not puede_editar_config %}
+            // Deshabilitar todos los inputs del formulario de configuración
+            const formConfig = document.getElementById('formConfigComite');
+            if (formConfig) {
+                const inputs = formConfig.querySelectorAll('input, select, textarea');
+                inputs.forEach(input => {
+                    input.disabled = true;
+                    input.classList.add('disabled');
+                });
+            }
+            {% endif %}
+        });
+    </script>
 
 </body>
+
 </html>

@@ -307,9 +307,23 @@ def api_scoring_lineas():
     if str(BASE_DIR) not in sys.path:
         sys.path.insert(0, str(BASE_DIR))
     
+    from app.utils.decorators import no_cache_and_check_session, admin_required, requiere_permiso
+    from db_helpers import (
+        obtener_lineas_credito, cursor_factory, 
+        obtener_parametros_capacidad, guardar_parametros_capacidad
+    )
+    from db_helpers_scoring_linea import (
+        obtener_config_scoring_linea, 
+        guardar_config_scoring_linea,
+        guardar_niveles_riesgo_linea,
+        obtener_lineas_credito_scoring,
+        guardar_factores_rechazo_linea,
+        guardar_criterios_completos_linea,
+        copiar_config_scoring
+    )
+    from db_helpers_comite import obtener_casos_pendientes_comite
+    
     try:
-        from db_helpers_scoring_linea import obtener_lineas_credito_scoring
-        
         lineas = obtener_lineas_credito_scoring()
         
         # CORRECCIÓN: El JavaScript espera success: true
@@ -567,3 +581,86 @@ def api_estadisticas_estados():
             "success": False,
             "error": str(e)
         }), 500
+
+
+@api_bp.route("/scoring/linea/<int:linea_id>/factores-rechazo", methods=["POST"])
+@api_login_required
+@requiere_permiso("admin_panel_acceso")
+def guardar_factores_rechazo(linea_id):
+    """Guarda los factores de rechazo para una línea específica"""
+    try:
+        data = request.get_json()
+        factores = data.get("factores", [])
+        
+        if guardar_factores_rechazo_linea(linea_id, factores):
+            return jsonify({"success": True})
+        else:
+            return jsonify({"success": False, "error": "Error al guardar factores"}), 500
+            
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@api_bp.route("/scoring/linea/<int:linea_id>/criterios", methods=["POST"])
+@api_login_required
+@requiere_permiso("admin_panel_acceso")
+def guardar_criterios_linea(linea_id):
+    """Guarda los criterios de scoring para una línea específica"""
+    try:
+        data = request.get_json()
+        # El frontend puede mandar 'criterios' o ser una lista directa
+        criterios = data.get("criterios", data) if isinstance(data, dict) else data
+        
+        if guardar_criterios_completos_linea(linea_id, criterios):
+            return jsonify({"success": True})
+        else:
+            return jsonify({"success": False, "error": "Error al guardar criterios"}), 500
+            
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@api_bp.route("/scoring/copiar-config", methods=["POST"])
+@api_login_required
+@requiere_permiso("admin_panel_acceso")
+def copiar_configuracion_scoring():
+    """Copia la configuración de scoring de una línea a otra"""
+    try:
+        data = request.get_json()
+        linea_origen_id = data.get("linea_origen_id")
+        linea_destino_id = data.get("linea_destino_id")
+        incluir_criterios = data.get("incluir_criterios", True)
+        
+        if not linea_origen_id or not linea_destino_id:
+            return jsonify({"success": False, "error": "IDs de línea requeridos"}), 400
+            
+        if copiar_config_scoring(linea_origen_id, linea_destino_id, incluir_criterios):
+            return jsonify({"success": True})
+        else:
+            return jsonify({"success": False, "error": "Error al copiar configuración"}), 500
+            
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@api_bp.route("/scoring/linea/<int:linea_id>/factores-rechazo", methods=["POST"])
+@api_login_required
+@requiere_permiso("admin_panel_acceso")
+def guardar_factores_rechazo(linea_id):
+    """Guarda los factores de rechazo para una línea específica"""
+    try:
+        data = request.get_json()
+        # El frontend manda {factores: [...]} o [...]
+        factores = data.get("factores", data) if isinstance(data, dict) else data
+        
+        from db_helpers_scoring_linea import guardar_factores_rechazo_linea
+        
+        if guardar_factores_rechazo_linea(linea_id, factores):
+            return jsonify({"success": True})
+        else:
+            return jsonify({"success": False, "error": "Error al guardar factores de rechazo"}), 500
+            
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500

@@ -1751,6 +1751,7 @@ def obtener_usuarios_completos():
         SELECT id, username, nombre_completo, rol, activo,
                fecha_creacion, fecha_modificacion
         FROM usuarios
+        WHERE activo = 1
         ORDER BY fecha_creacion DESC
     """
     )
@@ -1838,7 +1839,6 @@ def ensure_user_assignments_table():
     try:
         cursor.execute(
             """
-            CREATE TABLE IF NOT EXISTS user_assignments (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 manager_username TEXT NOT NULL,
                 member_username TEXT NOT NULL,

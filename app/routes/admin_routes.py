@@ -571,6 +571,86 @@ def crear_linea_credito():
     return redirect(url_for("admin.admin_panel") + "#TasasCredito")
 
 
+    return redirect(url_for("admin.admin_panel") + "#TasasCredito")
+
+
+@admin_bp.route("/lineas/editar", methods=["POST"])
+@login_required
+def editar_linea_credito():
+    """Editar línea de crédito existente"""
+    import sys
+    from pathlib import Path
+    BASE_DIR = Path(__file__).parent.parent.parent.resolve()
+    if str(BASE_DIR) not in sys.path:
+        sys.path.insert(0, str(BASE_DIR))
+    
+    if not tiene_alguno_de(["cfg_lin_editar", "cfg_tasas_editar"]):
+        flash("No tienes permiso para editar líneas de crédito", "warning")
+        return redirect(url_for("admin.admin_panel"))
+
+    from db_helpers import cargar_configuracion, guardar_configuracion
+    from ..utils.formatting import parse_currency_value
+
+    try:
+        # El nombre original viene en un campo oculto o es el mismo nombre si no se permite cambiar
+        nombre_original = request.form.get("nombre_original")
+        nombre = request.form.get("nombre", "").strip()
+
+        if not nombre:
+            flash("El nombre de la línea es requerido", "error")
+            return redirect(url_for("admin.admin_panel") + "#TasasCredito")
+
+        config = cargar_configuracion()
+        lineas = config.get("LINEAS_CREDITO", {})
+
+        # Si el nombre cambió, verificar que no exista ya
+        if nombre_original and nombre != nombre_original and nombre in lineas:
+            flash(f"La línea '{nombre}' ya existe", "error")
+            return redirect(url_for("admin.admin_panel") + "#TasasCredito")
+
+        # Recuperar datos existentes o crear nuevos
+        linea_data = lineas.get(nombre_original, {}) if nombre_original else {}
+        if not linea_data and nombre in lineas:
+             linea_data = lineas[nombre]
+
+        # Actualizar datos
+        linea_data.update({
+            "descripcion": request.form.get("descripcion", ""),
+            "monto_min": parse_currency_value(request.form.get("monto_min", 500000)),
+            "monto_max": parse_currency_value(request.form.get("monto_max", 10000000)),
+            "plazo_min": int(request.form.get("plazo_min", 1)),
+            "plazo_max": int(request.form.get("plazo_max", 36)),
+            "tasa_mensual": float(request.form.get("tasa_mensual", 2.0)),
+            "tasa_anual": float(request.form.get("tasa_anual", 25.0)),
+            "aval_porcentaje": float(request.form.get("aval_porcentaje", 0.10)),
+            "plazo_tipo": request.form.get("plazo_tipo", "meses"),
+            "permite_desembolso_neto": request.form.get("permite_desembolso_neto") == "on",
+            "desembolso_por_defecto": request.form.get("desembolso_por_defecto", "completo")
+        })
+
+        # Si hubo cambio de nombre, eliminar el anterior (soft delete en DB) y poner el nuevo
+        if nombre_original and nombre != nombre_original:
+            if nombre_original in lineas:
+                del lineas[nombre_original]
+            
+            # CRÍTICO: Eliminar de la BD explícitamente para evitar duplicados
+            # ya que guardar_configuracion solo hace INSERT/UPDATE.
+            from db_helpers import eliminar_linea_credito_db
+            eliminar_linea_credito_db(nombre_original)
+        
+        lineas[nombre] = linea_data
+        config["LINEAS_CREDITO"] = lineas
+        
+        guardar_configuracion(config)
+        flash(f"Línea '{nombre}' actualizada correctamente", "success")
+
+    except Exception as e:
+        traceback.print_exc()
+        flash(f"Error al editar línea: {str(e)}", "error")
+
+    return redirect(url_for("admin.admin_panel") + "#TasasCredito")
+
+
 @admin_bp.route("/lineas/eliminar", methods=["POST"])
 @login_required
 def eliminar_linea_credito():
@@ -603,6 +683,127 @@ def eliminar_linea_credito():
         flash(f"Error al eliminar línea: {str(e)}", "error")
 
     return redirect(url_for("admin.admin_panel") + "#TasasCredito")
+
+
+@admin_bp.route("/costos", methods=["POST"])
+@login_required
+@requiere_permiso("cfg_costos_editar")
+def guardar_costo():
+    """Guardar o actualizar un costo asociado"""
+    import sys
+    from pathlib import Path
+    BASE_DIR = Path(__file__).parent.parent.parent.resolve()
+    if str(BASE_DIR) not in sys.path:
+        sys.path.insert(0, str(BASE_DIR))
+
+    from db_helpers import cargar_configuracion, guardar_configuracion
+    from ..utils.formatting import parse_currency_value
+
+    try:
+        linea_nombre = request.form.get("linea")
+        nombre_costo = request.form.get("nombre_costo")
+        valor = request.form.get("valor")
+
+        if not linea_nombre or not nombre_costo or valor is None:
+            flash("Todos los campos son requeridos", "error")
+            return redirect(url_for("admin.admin_panel") + "#CostosAsociados")
+
+        config = cargar_configuracion()
+        costos = config.get("COSTOS_ASOCIADOS", {})
+        
+        if linea_nombre not in costos:
+            costos[linea_nombre] = {}
+        
+        costos[linea_nombre][nombre_costo] = parse_currency_value(str(valor))
+        config["COSTOS_ASOCIADOS"] = costos
+        
+        guardar_configuracion(config)
+        flash(f"Costo '{nombre_costo}' guardado correctamente", "success")
+
+    except Exception as e:
+        traceback.print_exc()
+        flash(f"Error al guardar costo: {str(e)}", "error")
+
+    return redirect(url_for("admin.admin_panel") + "#CostosAsociados")
+
+
+@admin_bp.route("/costos/eliminar", methods=["POST"])
+@login_required
+@requiere_permiso("cfg_costos_editar")
+def eliminar_costo():
+    """Eliminar un costo asociado"""
+    import sys
+    from pathlib import Path
+    BASE_DIR = Path(__file__).parent.parent.parent.resolve()
+    if str(BASE_DIR) not in sys.path:
+        sys.path.insert(0, str(BASE_DIR))
+
+    from db_helpers import cargar_configuracion, guardar_configuracion
+
+    try:
+        linea_nombre = request.form.get("linea")
+        nombre_costo = request.form.get("nombre_costo")
+
+        if not linea_nombre or not nombre_costo:
+            flash("Datos incompletos para eliminar costo", "error")
+            return redirect(url_for("admin.admin_panel") + "#CostosAsociados")
+
+        config = cargar_configuracion()
+        costos = config.get("COSTOS_ASOCIADOS", {})
+        
+        if linea_nombre in costos and nombre_costo in costos[linea_nombre]:
+            del costos[linea_nombre][nombre_costo]
+            # Si la línea queda sin costos, se puede dejar la llave vacía o eliminarla
+            # Dejémosla para consistencia
+            
+            config["COSTOS_ASOCIADOS"] = costos
+            guardar_configuracion(config)
+            flash(f"Costo '{nombre_costo}' eliminado", "success")
+        else:
+            flash("Costo no encontrado", "warning")
+
+    except Exception as e:
+        traceback.print_exc()
+        flash(f"Error al eliminar costo: {str(e)}", "error")
+
+    return redirect(url_for("admin.admin_panel") + "#CostosAsociados")
+
+
+@admin_bp.route("/capacidad/guardar", methods=["POST"])
+@login_required
+@requiere_permiso("cfg_capacidad_editar")
+def guardar_capacidad():
+    """Guardar parámetros de capacidad de pago"""
+    import sys
+    from pathlib import Path
+    BASE_DIR = Path(__file__).parent.parent.parent.resolve()
+    if str(BASE_DIR) not in sys.path:
+        sys.path.insert(0, str(BASE_DIR))
+
+    from db_helpers import cargar_configuracion, guardar_configuracion
+
+    try:
+        config = cargar_configuracion()
+        params = config.get("PARAMETROS_CAPACIDAD_PAGO", {})
+        
+        # Actualizar valores del formulario
+        for key in request.form:
+            if key in ["csrf_token"]: continue
+            # Intentar convertir a número si es posible
+            try:
+                params[key] = float(request.form[key])
+            except ValueError:
+                params[key] = request.form[key]
+        
+        config["PARAMETROS_CAPACIDAD_PAGO"] = params
+        guardar_configuracion(config)
+        flash("Parámetros de capacidad guardados correctamente", "success")
+
+    except Exception as e:
+        traceback.print_exc()
+        flash(f"Error al guardar capacidad: {str(e)}", "error")
+
+    return redirect(url_for("admin.admin_panel") + "#CapacidadPago")
 
 
 # ============================================================================

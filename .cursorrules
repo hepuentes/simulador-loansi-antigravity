@@ -1,0 +1,119 @@
+# LOANSI - SISTEMA DE EVALUACIÓN CREDITICIA
+# Reglas Globales del Proyecto para Antigravity
+
+## PROYECTO
+- Nombre: Loansi
+- Tipo: Sistema de evaluación crediticia
+- Estado: Producción (desarrollo activo)
+- Dueño: Hepuentes (NO es programador)
+
+## URLS
+- Producción: https://loansi.pythonanywhere.com
+- Login: https://loansi.pythonanywhere.com/login
+- GitHub: https://github.com/hepuentes/simulador-loansi-antigravity.git
+
+## CREDENCIALES PYTHONANYWHERE
+- Usuario: loansi
+- API Token: 148b17024de328398c6e4ce725d07a926222ebe7
+- Plan: Free (Beginner)
+- Dominio: loansi.pythonanywhere.com
+
+## STACK TECNOLÓGICO
+- Backend: Flask 3.x con Application Factory Pattern
+- Base de datos: SQLite (loansi.db) - ÚNICA persistencia permitida
+- Frontend: Bootstrap 5.3.2 CDN - NO cambiar versión
+- Seguridad: CSRF activo siempre (Flask-WTF)
+- Arquitectura: Modular con Blueprints
+- Python: 3.10
+
+## ESTRUCTURA DE ARCHIVOS
+```
+/simulador-loansi-antigravity/
+├── app/
+│   ├── __init__.py              # Factory create_app()
+│   ├── config.py                # Configuración
+│   ├── extensions.py            # CSRF y extensiones
+│   └── routes/
+│       ├── __init__.py          # register_blueprints()
+│       ├── auth.py              # Login/logout
+│       ├── main.py              # Home/dashboard
+│       ├── admin_routes.py      # Panel admin
+│       ├── scoring_routes.py    # Puntuación
+│       ├── comite_routes.py     # Comité crédito
+│       ├── api_routes.py        # REST/AJAX
+│       └── asesor_routes.py     # Asesores
+│   └── services/                # Lógica negocio
+│   └── models/                  # Acceso datos
+│   └── utils/                   # Utilidades
+├── templates/
+│   ├── admin/
+│   ├── asesor/
+│   ├── cliente/
+│   ├── dashboards/
+│   └── partials/
+├── static/
+│   ├── css/
+│   │   ├── theme.css            # Temas claro/oscuro
+│   │   └── components.css       # Componentes
+│   └── js/
+├── run.py                       # Punto entrada
+├── loansi.db                    # Base datos
+└── db_helpers.py                # Helpers BD
+```
+
+## REGLAS DE SEGURIDAD OBLIGATORIAS
+1. CSRF: Todos los formularios DEBEN tener {{ csrf_token() }}
+2. SQL: SIEMPRE usar parámetros (?), NUNCA concatenar strings
+3. Sesiones: Usar decorador @no_cache_and_check_session
+4. Passwords: NUNCA en texto plano, usar hash
+5. Errores: NO exponer stack traces al usuario
+
+## REGLAS DE ARQUITECTURA
+1. Blueprints: Usar url_for('blueprint.funcion')
+2. Templates: Heredar de base.html
+3. CSS: Orden de carga → Bootstrap CDN → theme.css → components.css
+4. Responsive: Soportar 360px, 768px, 1024px+
+5. Migraciones BD: CREATE TABLE IF NOT EXISTS
+
+## REGLAS DE CÓDIGO
+1. Idioma comentarios: Español
+2. Imports: Ordenados (stdlib, third-party, local)
+3. Funciones: Nombres descriptivos en español o inglés consistente
+4. NO agregar librerías sin justificación
+
+## API PYTHONANYWHERE
+Endpoint reload:
+POST https://www.pythonanywhere.com/api/v0/user/loansi/webapps/loansi.pythonanywhere.com/reload/
+Header: Authorization: Token 148b17024de328398c6e4ce725d07a926222ebe7
+
+## COMANDOS DEPLOYMENT
+```bash
+# En PythonAnywhere Bash:
+cd /home/loansi/simulador
+git pull origin main
+# Luego: Web tab → Reload
+
+# Backup BD:
+cp loansi.db loansi.db.backup_$(date +%Y%m%d_%H%M%S)
+
+# Ver errores:
+tail -50 /var/log/loansi.pythonanywhere.com.error.log
+
+# Revertir:
+git checkout HEAD~1
+```
+
+## DATOS SENSIBLES QUE MANEJA EL SISTEMA
+- Cédula/identificación
+- Ingresos financieros
+- Score crediticio
+- Historial préstamos
+- Datos contacto
+- Contraseñas (hasheadas)
+
+## MODO DE TRABAJO
+- Agentes trabajan AUTÓNOMOS
+- Usuario solo APRUEBA o DESAPRUEBA
+- NO dar instrucciones manuales al usuario, solo seria el ultimo recursos si no puedes acceeder o probar alguna funcionalidad.
+- Ejecutar cambios directamente
+- Pedir aprobación antes de acciones destructivas

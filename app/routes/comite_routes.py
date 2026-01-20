@@ -170,12 +170,11 @@ def aprobar_caso():
         })
         
         flash(f"Caso aprobado para {evaluacion.get('nombre_cliente')}", "success")
+        return jsonify({"success": True, "message": f"Caso aprobado para {evaluacion.get('nombre_cliente')}"})
         
     except Exception as e:
         traceback.print_exc()
-        flash(f"Error al aprobar caso: {str(e)}", "error")
-    
-    return redirect(url_for("comite.comite_credito"))
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @comite_bp.route("/admin/comite-credito/rechazar", methods=["POST"])
@@ -193,27 +192,29 @@ def rechazar_caso():
     from ..utils.timezone import obtener_hora_colombia
     
     try:
-        timestamp = request.form.get("timestamp")
-        motivo = request.form.get("motivo", "").strip()
+        # Soporte para JSON y Form Data (para compatibilidad con tests y frontend)
+        if request.is_json:
+            data = request.get_json()
+            timestamp = data.get("timestamp")
+            motivo = data.get("motivo", "").strip()
+        else:
+            timestamp = request.form.get("timestamp")
+            motivo = request.form.get("motivo", "").strip()
         
         if not timestamp:
-            flash("Timestamp no especificado", "error")
-            return redirect(url_for("comite.comite_credito"))
+            return jsonify({"success": False, "error": "Timestamp no especificado"}), 400
         
         if not motivo:
-            flash("El motivo de rechazo es requerido", "error")
-            return redirect(url_for("comite.comite_credito"))
+            return jsonify({"success": False, "error": "El motivo de rechazo es requerido"}), 400
         
         # Obtener evaluación
         evaluacion = obtener_evaluacion_por_timestamp(timestamp)
         
         if not evaluacion:
-            flash("Evaluación no encontrada", "error")
-            return redirect(url_for("comite.comite_credito"))
+            return jsonify({"success": False, "error": "Evaluación no encontrada"}), 404
         
         if evaluacion.get("estado_comite") != "pending":
-            flash("Este caso ya fue procesado", "error")
-            return redirect(url_for("comite.comite_credito"))
+            return jsonify({"success": False, "error": "Este caso ya fue procesado"}), 400
         
         # Actualizar evaluación
         decision_admin = {
@@ -229,9 +230,8 @@ def rechazar_caso():
         })
         
         flash(f"Caso rechazado para {evaluacion.get('nombre_cliente')}", "success")
+        return jsonify({"success": True, "message": f"Caso rechazado para {evaluacion.get('nombre_cliente')}"})
         
     except Exception as e:
         traceback.print_exc()
-        flash(f"Error al rechazar caso: {str(e)}", "error")
-    
-    return redirect(url_for("comite.comite_credito"))
+        return jsonify({"success": False, "error": str(e)}), 500

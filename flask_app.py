@@ -908,19 +908,39 @@ def recuperar_desde_backup_mas_reciente():
 app = Flask(__name__, static_folder="static")
 app.config["WTF_CSRF_ENABLED"] = True
 csrf = CSRFProtect(app)
-app.secret_key = "clave_segura_loansi"
-
 # Sistema de contraseña más seguro usando hash
 SALT = "loansi_salt_security"
 
 # CONFIGURACIÓN DE SEGURIDAD DE SESIONES
-app.secret_key = "clave_segura_loansi"
-app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=1)  # 1 hora por seguridad
-app.config["SESSION_COOKIE_SECURE"] = False
+# SEGURIDAD CRÍTICA: Configuración de claves y sesiones
+import os
+
+# 1. Secret Key: Obligatoria por variable de entorno en producción
+env_secret = os.environ.get("SECRET_KEY")
+if env_secret:
+    app.secret_key = env_secret
+else:
+    # Fallback SOLO para desarrollo
+    if os.environ.get("FLASK_ENV") == "production":
+        raise ValueError("CRITICAL SECURITY ERROR: SECRET_KEY environment variable is missing in production!")
+    
+    print("⚠️  WARNING: Usando clave secreta insegura por defecto (modo desarrollo).")
+    app.secret_key = "dev_key_insecure_fallback_do_not_use_in_prod"
+
+# 2. Cookies Seguras: True por defecto, solo False si es explícitamente dev
+# Se asume producción si no se especifica lo contrario o si FLASK_ENV=production
+is_dev_env = os.environ.get("FLASK_ENV") == "development"
+
+app.config["SESSION_COOKIE_SECURE"] = not is_dev_env  # True en Prod, False en Dev
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
-app.config["WTF_CSRF_TIME_LIMIT"] = None  # Sin límite - evita expiración prematura
+
+# 3. Protección CSRF
+app.config["WTF_CSRF_SSL_STRICT"] = not is_dev_env  # True en Prodevita expiración prematura
 app.config["WTF_CSRF_SSL_STRICT"] = False  # Para PythonAnywhere
+
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=1)  # 1 hora por seguridad
+app.config["WTF_CSRF_TIME_LIMIT"] = None  # Sin límite - evita expiración prematura
 
 # ============================================
 # INICIALIZAR SISTEMA DE PERMISOS GRANULARES
@@ -1828,8 +1848,12 @@ def registrar_evaluacion_scoring(
             )
 
         # MIGRADO A SQLite: Guardar usando db_helpers
+        # Mask PII for logs
+        cliente_log = registro.get('nombre_cliente', 'N/A')
+        if len(cliente_log) > 3:
+            cliente_log = cliente_log[:3] + "***"
         print(
-            f"🔵 [REGISTRO] Guardando evaluación en SQLite: {registro.get('nombre_cliente')}"
+            f"🔵 [REGISTRO] Guardando evaluación en SQLite: {cliente_log}"
         )
         guardar_evaluacion_db(registro)
         print(f"🔵 [REGISTRO] ✅ Evaluación guardada exitosamente")
@@ -2773,9 +2797,11 @@ def login():
             # Limpiar intentos fallidos tras login exitoso
             clear_attempts(client_ip)
 
-            print(
-                f"✅ Login exitoso: {session.get('nombre_completo') or username} ({role})"
-            )
+            # Mask username/name for logs
+            user_log = session.get('username', 'unknown')
+            if len(user_log) > 3:
+                user_log = user_log[:3] + "***"
+            print(f"✅ Login exitoso: {user_log} ({role})")
 
             # Redirección según rol después del login
             # TODOS los roles van al dashboard, desde ahí acceden a sus funciones
