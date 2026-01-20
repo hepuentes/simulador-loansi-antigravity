@@ -1,119 +1,118 @@
-# LOANSI - SISTEMA DE EVALUACIÓN CREDITICIA
-# Reglas Globales del Proyecto para Antigravity
+## PROYECTO: LOANSI – Sistema de Simulación de Créditos y Scoring Multilínea
 
-## PROYECTO
-- Nombre: Loansi
-- Tipo: Sistema de evaluación crediticia
-- Estado: Producción (desarrollo activo)
-- Dueño: Hepuentes (NO es programador)
+## ESTADO DEL SISTEMA
+PRODUCCIÓN REAL
+Usuarios activos
+Sistema financiero sensible
 
-## URLS
-- Producción: https://loansi.pythonanywhere.com
-- Login: https://loansi.pythonanywhere.com/login
-- GitHub: https://github.com/hepuentes/simulador-loansi-antigravity.git
-
-## CREDENCIALES PYTHONANYWHERE
-- Usuario: loansi
-- API Token: 148b17024de328398c6e4ce725d07a926222ebe7
-- Plan: Free (Beginner)
-- Dominio: loansi.pythonanywhere.com
-
-## STACK TECNOLÓGICO
-- Backend: Flask 3.x con Application Factory Pattern
-- Base de datos: SQLite (loansi.db) - ÚNICA persistencia permitida
-- Frontend: Bootstrap 5.3.2 CDN - NO cambiar versión
-- Seguridad: CSRF activo siempre (Flask-WTF)
-- Arquitectura: Modular con Blueprints
+## ENTORNO OBLIGATORIO
+- Hosting: PythonAnywhere Free (Beginner)
 - Python: 3.10
+- Framework: Flask 3.x (Factory pattern)
+- Base de datos: SQLite (archivo único)
+- Frontend: Bootstrap 5.3.2 por CDN
+- CSRF: SIEMPRE activo (Flask-WTF)
 
-## ESTRUCTURA DE ARCHIVOS
-```
-/simulador-loansi-antigravity/
+## PRINCIPIO CRÍTICO
+Estabilidad, claridad y capacidad de depuración
+SON MÁS IMPORTANTES que elegancia o complejidad.
+
+## LIMITACIONES DEL ENTORNO (NUNCA IGNORAR)
+
+1. Recursos limitados
+- NO procesos pesados al iniciar la app
+- NO tareas en background
+- NO loops infinitos
+- NO cargas masivas en memoria
+
+2. Arranque de la aplicación
+- create_app() debe ser liviano
+- NO lógica compleja en imports
+- NO llamadas externas al iniciar
+
+3. Base de datos
+- SQLite con archivo único
+- Consultas simples
+- NO locks prolongados
+- NO joins complejos innecesarios
+
+4. Logs y debugging
+- Usar SOLO prints controlados
+- NO imprimir datos sensibles
+- Mensajes claros y específicos
+
+Formato obligatorio de print:
+[archivo.py][función][paso X] descripción breve
+
+Ejemplo correcto:
+print("[scoring_service.py][calcular_score][paso 3] validando ingresos")
+
+Ejemplo incorrecto:
+print("error")
+print(user_data)
+
+## PRINCIPIO HOLÍSTICO
+Una modificación puede afectar:
+- rutas
+- servicios
+- modelos
+- permisos
+- scoring
+- comité
+- templates
+
+SIEMPRE analizar el sistema completo antes de cambiar algo.
+
+## ESTRUCTURA BASE DEL PROYECTO
+(La estructura puede evolucionar según necesidades)
+
+/
 ├── app/
-│   ├── __init__.py              # Factory create_app()
-│   ├── config.py                # Configuración
-│   ├── extensions.py            # CSRF y extensiones
-│   └── routes/
-│       ├── __init__.py          # register_blueprints()
-│       ├── auth.py              # Login/logout
-│       ├── main.py              # Home/dashboard
-│       ├── admin_routes.py      # Panel admin
-│       ├── scoring_routes.py    # Puntuación
-│       ├── comite_routes.py     # Comité crédito
-│       ├── api_routes.py        # REST/AJAX
-│       └── asesor_routes.py     # Asesores
-│   └── services/                # Lógica negocio
-│   └── models/                  # Acceso datos
-│   └── utils/                   # Utilidades
+│   ├── __init__.py              # create_app()
+│   ├── config.py
+│   ├── extensions.py            # CSRF, login, etc
+│   ├── routes/
+│   │   ├── auth.py
+│   │   ├── main.py
+│   │   ├── admin_routes.py
+│   │   ├── scoring_routes.py
+│   │   ├── comite_routes.py
+│   │   ├── api_routes.py
+│   │   └── asesor_routes.py
+│   ├── services/
+│   ├── models/
+│   └── utils/
 ├── templates/
-│   ├── admin/
-│   ├── asesor/
-│   ├── cliente/
-│   ├── dashboards/
-│   └── partials/
 ├── static/
-│   ├── css/
-│   │   ├── theme.css            # Temas claro/oscuro
-│   │   └── components.css       # Componentes
-│   └── js/
-├── run.py                       # Punto entrada
-├── loansi.db                    # Base datos
-└── db_helpers.py                # Helpers BD
-```
+├── run.py
+└── loansi.db
 
-## REGLAS DE SEGURIDAD OBLIGATORIAS
-1. CSRF: Todos los formularios DEBEN tener {{ csrf_token() }}
-2. SQL: SIEMPRE usar parámetros (?), NUNCA concatenar strings
-3. Sesiones: Usar decorador @no_cache_and_check_session
-4. Passwords: NUNCA en texto plano, usar hash
-5. Errores: NO exponer stack traces al usuario
+## SEGURIDAD
+- NO escribir credenciales ni tokens
+- NO exponer lógica de scoring al cliente
+- Toda ruta debe validar rol
+- CSRF obligatorio en formularios
 
-## REGLAS DE ARQUITECTURA
-1. Blueprints: Usar url_for('blueprint.funcion')
-2. Templates: Heredar de base.html
-3. CSS: Orden de carga → Bootstrap CDN → theme.css → components.css
-4. Responsive: Soportar 360px, 768px, 1024px+
-5. Migraciones BD: CREATE TABLE IF NOT EXISTS
+## GIT Y DEPLOY
 
-## REGLAS DE CÓDIGO
-1. Idioma comentarios: Español
-2. Imports: Ordenados (stdlib, third-party, local)
-3. Funciones: Nombres descriptivos en español o inglés consistente
-4. NO agregar librerías sin justificación
+- Los agentes trabajan SIEMPRE en el repo clonado local
+- NO hacer push automático sin aprobación del usuario
+- NO crear ramas innecesarias
+- Cambios deben quedar listos para commit único
 
-## API PYTHONANYWHERE
-Endpoint reload:
-POST https://www.pythonanywhere.com/api/v0/user/loansi/webapps/loansi.pythonanywhere.com/reload/
-Header: Authorization: Token 148b17024de328398c6e4ce725d07a926222ebe7
+Flujo oficial:
+1. Cambios locales
+2. Auditoría
+3. Validación de seguridad
+4. Testing funcional
+5. Aprobación del usuario
+6. Commit + push a GitHub
+7. Pull manual desde PythonAnywhere
+8. Reload manual de la webapp
 
-## COMANDOS DEPLOYMENT
-```bash
-# En PythonAnywhere Bash:
-cd /home/loansi/simulador
-git pull origin main
-# Luego: Web tab → Reload
-
-# Backup BD:
-cp loansi.db loansi.db.backup_$(date +%Y%m%d_%H%M%S)
-
-# Ver errores:
-tail -50 /var/log/loansi.pythonanywhere.com.error.log
-
-# Revertir:
-git checkout HEAD~1
-```
-
-## DATOS SENSIBLES QUE MANEJA EL SISTEMA
-- Cédula/identificación
-- Ingresos financieros
-- Score crediticio
-- Historial préstamos
-- Datos contacto
-- Contraseñas (hasheadas)
-
-## MODO DE TRABAJO
-- Agentes trabajan AUTÓNOMOS
-- Usuario solo APRUEBA o DESAPRUEBA
-- NO dar instrucciones manuales al usuario, solo seria el ultimo recursos si no puedes acceeder o probar alguna funcionalidad.
-- Ejecutar cambios directamente
-- Pedir aprobación antes de acciones destructivas
+## MODO DE TRABAJO DE LOS AGENTES
+- Autónomos
+- Especializados
+- No interactúan con el usuario
+- Solo el usuario APRUEBA o RECHAZA
+- Pedir confirmación antes de acciones destructivas
