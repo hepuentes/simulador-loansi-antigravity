@@ -115,5 +115,7 @@ git checkout HEAD~1
 - Agentes trabajan AUTÓNOMOS
 - Usuario solo APRUEBA o DESAPRUEBA
 - NO dar instrucciones manuales al usuario, solo seria el ultimo recursos si no puedes acceeder o probar alguna funcionalidad.
-- Ejecutar cambios directamente
+- Ejecutar cambios directamente apenas se aprueben todos los cambios de cada agente, envia los cambios al repo de git para actulizarlo 
+luego de ello envia de git a pythonanywhere para actulizarlo en la web app, si no es posible este ultimo paso indicar al usuario como ejecutar el comadno en bash 
+de pythonanyhwre para recibir los cambios actulizados.
 - Pedir aprobación antes de acciones destructivas
