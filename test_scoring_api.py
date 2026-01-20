@@ -1,97 +1,141 @@
 #!/usr/bin/env python3
 """
-Test script para verificar las funciones de scoring multi-línea.
+Test script para verificar integración en producción con autenticación.
+Usa credenciales de hpsupersu para probar acceso a rutas protegidas.
 """
 
+import requests
 import sys
-import os
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from db_helpers_scoring_linea import (
-    obtener_lineas_credito_scoring,
-    obtener_config_scoring_linea,
-    obtener_niveles_riesgo_linea,
-    obtener_factores_rechazo_linea,
-    verificar_tablas_scoring_linea,
-    cargar_scoring_por_linea
-)
+BASE_URL = "https://loansi.pythonanywhere.com"
+LOGIN_URL = f"{BASE_URL}/login"
+DASHBOARD_URL = f"{BASE_URL}/dashboard"
+ADMIN_URL = f"{BASE_URL}/admin"
+SCORING_URL = f"{BASE_URL}/scoring"
 
-def test_all():
+# Credenciales (Solicitadas por el usuario)
+USERNAME = "hpsupersu"
+PASSWORD = "loanaP25@"
+
+def run_integration_tests():
     print("=" * 60)
-    print("TEST: Verificando funciones de scoring multi-línea")
+    print(f"TEST INTEGRACIÓN: {BASE_URL}")
     print("=" * 60)
     
-    # Test 1: Verificar tablas
-    print("\n1. Verificando tablas...")
-    if verificar_tablas_scoring_linea():
-        print("   ✅ Todas las tablas existen")
-    else:
-        print("   ❌ Faltan tablas")
+    session = requests.Session()
+    
+    # 1. LOGIN
+    print("\n1. Intentando Login con hpsupersu...")
+    try:
+        # Obtener página de login para extraer CSRF token
+        print("   ⏳ Obteniendo página de login para CSRF token...")
+        login_page_response = session.get(LOGIN_URL)
+        
+        csrf_token = None
+        # Intento robusto de extracción de CSRF con regex
+        import re
+        # Buscar input con name="csrf_token"
+        token_match = re.search(r'<input[^>]*name="csrf_token"[^>]*value="([^"]*)"', login_page_response.text)
+        if not token_match:
+             # Intentar orden inverso de atributos
+             token_match = re.search(r'<input[^>]*value="([^"]*)"[^>]*name="csrf_token"', login_page_response.text)
+             
+        if token_match:
+            csrf_token = token_match.group(1)
+            print(f"   ✅ CSRF Token encontrado: {csrf_token[:10]}...")
+        else:
+            print("   ⚠️ No se encontró CSRF token. Imprimiendo parte del HTML para depurar:")
+            print(login_page_response.text[:1000]) # Imprimir primeros 1000 chars
+        
+        payload = {
+            "username": USERNAME,
+            "password": PASSWORD
+        }
+        
+        if csrf_token:
+            payload["csrf_token"] = csrf_token
+        
+        headers = {
+            "Referer": LOGIN_URL,
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        }
+        
+        response = session.post(LOGIN_URL, data=payload, headers=headers)
+        
+        if response.status_code == 200:
+            # En login exitoso, Flask puede redirigir. Requests sigue redirecciones por defecto.
+            # Verificamos si llegamos al dashboard o admin.
+            if "dashboard" in response.url or "admin" in response.url or "Bienvenido" in response.text or "Panel" in response.text:
+                 print("   ✅ Login EXITOSO.")
+            else:
+                 # A veces el login falla y devuelve la misma página de login con error
+                 if "Credenciales incorrectas" in response.text:
+                     print("   ❌ Login FALLÓ: Credenciales incorrectas.")
+                     return False
+                 elif "Bloqueada" in response.text:
+                     print("   ❌ Login FALLÓ: Cuenta bloqueada.")
+                     return False
+                 else:
+                     print(f"   ⚠️ Login completado pero respuesta ambigua. URL actual: {response.url}")
+        else:
+            print(f"   ❌ Error en petición Login: {response.status_code}")
+            print(f"   📄 Contenido respuesta error: {response.text[:500]}") # Ver qué dice Flask
+            return False
+            
+    except Exception as e:
+        print(f"   ❌ Excepción durante Login: {e}")
         return False
-    
-    # Test 2: Obtener líneas de crédito
-    print("\n2. Obteniendo líneas de crédito con scoring...")
-    lineas = obtener_lineas_credito_scoring()
-    if lineas:
-        print(f"   ✅ {len(lineas)} líneas encontradas:")
-        for linea in lineas:
-            print(f"      - {linea['nombre']} (ID: {linea['id']}, Score min: {linea.get('score_datacredito_minimo', 'N/A')})")
-    else:
-        print("   ❌ No se encontraron líneas")
+
+    # 2. VERIFICAR SESIÓN (DASHBOARD)
+    print("\n2. Verificando acceso a Dashboard Protegido...")
+    try:
+        response = session.get(DASHBOARD_URL)
+        if response.status_code == 200 and "login" not in response.url:
+            print("   ✅ Acceso a Dashboard autorizado.")
+        else:
+            print(f"   ❌ Fallo acceso a Dashboard. URL: {response.url}, Status: {response.status_code}")
+            return False
+    except Exception as e:
+        print(f"   ❌ Error: {e}")
         return False
-    
-    # Test 3: Obtener configuración de LoansiMoto (id=7)
-    print("\n3. Obteniendo configuración de LoansiMoto (id=7)...")
-    config = obtener_config_scoring_linea(7)
-    if config and config.get('config_general'):
-        cg = config['config_general']
-        print(f"   ✅ Configuración encontrada:")
-        print(f"      - Línea: {cg.get('linea_nombre')}")
-        print(f"      - Score DataCrédito mínimo: {cg.get('score_datacredito_minimo')}")
-        print(f"      - DTI máximo: {cg.get('dti_maximo')}%")
-        print(f"      - Puntaje mínimo aprobación: {cg.get('puntaje_minimo_aprobacion')}")
-    else:
-        print("   ⚠️ Configuración vacía o con valores por defecto")
-    
-    # Test 4: Obtener niveles de riesgo
-    print("\n4. Obteniendo niveles de riesgo de LoansiMoto...")
-    niveles = obtener_niveles_riesgo_linea(7)
-    if niveles:
-        print(f"   ✅ {len(niveles)} niveles encontrados:")
-        for nivel in niveles:
-            print(f"      - {nivel.get('nombre')}: Score {nivel.get('min')}-{nivel.get('max')}, Tasa {nivel.get('tasa_ea')}%")
-    else:
-        print("   ⚠️ No se encontraron niveles de riesgo")
-    
-    # Test 5: Obtener factores de rechazo
-    print("\n5. Obteniendo factores de rechazo de LoansiMoto...")
-    factores = obtener_factores_rechazo_linea(7)
-    if factores:
-        print(f"   ✅ {len(factores)} factores encontrados:")
-        for f in factores[:5]:  # Mostrar solo los primeros 5
-            print(f"      - {f.get('criterio_nombre')}: {f.get('operador')} {f.get('valor')}")
-        if len(factores) > 5:
-            print(f"      ... y {len(factores) - 5} más")
-    else:
-        print("   ⚠️ No se encontraron factores de rechazo")
-    
-    # Test 6: Cargar scoring por nombre de línea
-    print("\n6. Cargando scoring por nombre 'LoansiMoto'...")
-    scoring = cargar_scoring_por_linea('LoansiMoto')
-    if scoring:
-        print(f"   ✅ Scoring cargado:")
-        print(f"      - Línea ID: {scoring.get('linea_credito_id')}")
-        print(f"      - Puntaje mínimo: {scoring.get('puntaje_minimo_aprobacion')}")
-        print(f"      - Niveles de riesgo: {len(scoring.get('niveles_riesgo', []))}")
-        print(f"      - Factores de rechazo: {len(scoring.get('factores_rechazo_automatico', []))}")
-    else:
-        print("   ⚠️ No se pudo cargar scoring por nombre")
-    
+
+    # 3. VERIFICAR ADMIN
+    print("\n3. Verificando acceso a Panel de Administración...")
+    try:
+        response = session.get(ADMIN_URL)
+        if response.status_code == 200:
+            if "Admin" in response.text or "Usuarios" in response.text:
+                print("   ✅ Acceso Admin verificado.")
+            else:
+                print("   ⚠️ Acceso Admin posible pero contenido no reconocido.")
+        elif response.status_code == 403:
+            print("   ❌ Acceso Denegado (403) - Rol insuficiente?")
+            return False
+        else:
+            print(f"   ❌ Error acceso Admin: {response.status_code}")
+            return False
+    except Exception as e:
+        print(f"   ❌ Error: {e}")
+        return False
+
+    # 4. VERIFICAR SCORING
+    print("\n4. Verificando acceso a Módulo Scoring...")
+    try:
+        response = session.get(SCORING_URL)
+        if response.status_code == 200:
+             print("   ✅ Acceso Scoring verificado.")
+        else:
+             print(f"   ❌ Error acceso Scoring: {response.status_code}")
+             return False
+    except Exception as e:
+        print(f"   ❌ Error: {e}")
+        return False
+
     print("\n" + "=" * 60)
-    print("TEST COMPLETADO")
+    print("VEREDICTO FINAL: INTEGRACIÓN EXITOSA")
     print("=" * 60)
     return True
 
 if __name__ == "__main__":
-    success = test_all()
+    success = run_integration_tests()
     sys.exit(0 if success else 1)
