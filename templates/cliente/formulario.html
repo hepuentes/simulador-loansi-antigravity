@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es" data-theme="light">
+
 <head>
     <meta charset="UTF-8">
     <title>Simulador de Crédito - Loansi</title>
@@ -46,6 +47,7 @@
         }
     </style>
 </head>
+
 <body class="bg-light" style="position: relative; min-height: 100vh;">
     <button class="theme-toggle-public" aria-label="Cambiar tema">
         <i class="bi bi-moon-fill"></i>
@@ -58,32 +60,29 @@
 
                 <!-- Mensajes flash -->
                 {% with messages = get_flashed_messages(with_categories=true) %}
-                    {% if messages %}
-                        {% for category, message in messages %}
-                        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                            {{ message }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        </div>
-                        {% endfor %}
-                    {% endif %}
+                {% if messages %}
+                {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endfor %}
+                {% endif %}
                 {% endwith %}
 
                 <form action="{{ url_for('simulador.calcular_cliente') }}" method="post" id="formSimulador">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
 
                     <div class="mb-3">
                         <label for="tipo_credito" class="form-label">Tipo de Crédito</label>
                         <select name="tipo_credito" id="tipo_credito" class="form-select" required>
                             {% for nombre, datos in lineas.items() %}
-                            <option value="{{nombre}}"
-                                    data-min="{{datos.monto_min}}"
-                                    data-max="{{datos.monto_max}}"
-                                    data-plazo-min="{{datos.plazo_min}}"
-                                    data-plazo-max="{{datos.plazo_max}}"
-                                    data-plazo-tipo="{{datos.plazo_tipo}}"
-                                    data-permite-neto="{{datos.permite_desembolso_neto|default(true)|lower}}"
-                                    data-modalidad-defecto="{{datos.desembolso_por_defecto|default('completo')}}"
-                                    {% if tipo_credito_sel == nombre %}selected{% endif %}>
+                            <option value="{{nombre}}" data-min="{{datos.monto_min}}" data-max="{{datos.monto_max}}"
+                                data-plazo-min="{{datos.plazo_min}}" data-plazo-max="{{datos.plazo_max}}"
+                                data-plazo-tipo="{{datos.plazo_tipo}}"
+                                data-permite-neto="{{datos.permite_desembolso_neto|default(true)|lower}}"
+                                data-modalidad-defecto="{{datos.desembolso_por_defecto|default('completo')}}" {% if
+                                tipo_credito_sel==nombre %}selected{% endif %}>
                                 {{nombre}}
                             </option>
                             {% endfor %}
@@ -94,24 +93,25 @@
                         <label for="monto" class="form-label">Monto Solicitado</label>
                         <div class="input-group">
                             <span class="input-group-text">$</span>
-                            <input type="text" class="form-control" id="monto" name="monto"
-                                   placeholder="Ej: 5.000.000" value="{{ monto_ingresado or '' }}" required>
+                            <input type="text" class="form-control" id="monto" name="monto" placeholder="Ej: 5.000.000"
+                                value="{{ monto_ingresado or '' }}" required>
                         </div>
                         <div class="form-text" id="monto-ayuda">Ingrese el monto que desea solicitar</div>
                     </div>
 
                     <div class="mb-3">
                         <label for="plazo" class="form-label">Plazo</label>
-                        <input type="number" class="form-control" id="plazo" name="plazo"
-                               placeholder="Ej: 24 meses" value="{{ plazo_ingresado or '' }}" required>
+                        <input type="number" class="form-control" id="plazo" name="plazo" placeholder="Ej: 24 meses"
+                            value="{{ plazo_ingresado or '' }}" required>
                         <div class="form-text" id="plazo-ayuda">Ingrese el plazo</div>
                     </div>
 
                     <div class="mb-3">
                         <label for="fecha_nacimiento" class="form-label">Fecha de nacimiento</label>
                         <input type="date" class="form-control" id="fecha_nacimiento" name="fecha_nacimiento"
-                               min="1941-01-01" max="2007-11-10" value="{{ fecha_nacimiento_ingresada or '' }}" required>
-                        <div class="form-text text-muted">Debes tener entre 18 y 84 años para solicitar el crédito.</div>
+                            min="1941-01-01" max="2007-11-10" value="{{ fecha_nacimiento_ingresada or '' }}" required>
+                        <div class="form-text text-muted">Debes tener entre 18 y 84 años para solicitar el crédito.
+                        </div>
                     </div>
 
                     <!-- Costos del crédito -->
@@ -126,30 +126,35 @@
                                         <small class="text-muted">Se calcularán según el monto y plazo</small>
                                     </div>
                                     <button type="button" class="btn btn-sm btn-outline-secondary"
-                                            onclick="toggleCostosDetalle()" id="btn-toggle-costos">
+                                        onclick="toggleCostosDetalle()" id="btn-toggle-costos">
                                         <i class="bi bi-chevron-down"></i> Ver detalle
                                     </button>
                                 </div>
 
                                 <!-- Detalle colapsable de costos -->
-                                <div id="costos-detalle" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border-color);">
+                                <div id="costos-detalle"
+                                    style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border-color);">
                                     <p class="mb-2"><small class="text-muted">Los costos incluyen:</small></p>
                                     <ul class="list-unstyled mb-0" style="font-size: 0.9rem;">
                                         <li><i class="bi bi-check-circle-fill text-success me-2"></i>Seguro de vida</li>
-                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Pagaré digital y firma electrónica</li>
-                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Aval (Garantía)</li>
-                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Otros costos administrativos</li>
+                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Pagaré digital y
+                                            firma electrónica</li>
+                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Aval (Garantía)
+                                        </li>
+                                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Otros costos
+                                            administrativos</li>
                                     </ul>
                                 </div>
 
                                 <!-- Checkbox para modalidad de desembolso -->
                                 <div class="mt-3 pt-3" style="border-top: 1px solid var(--border-color);">
                                     <div class="form-check">
-                                        <input type="hidden" name="desembolso_completo" value="off" id="desembolso_completo_hidden">
+                                        <input type="hidden" name="desembolso_completo" value="off"
+                                            id="desembolso_completo_hidden">
                                         <input class="form-check-input" type="checkbox" id="desembolso_completo"
-                                               name="desembolso_completo" value="on"
-                                               {% if desembolso_sel == 'on' or not desembolso_sel %}checked{% endif %}
-                                               onchange="document.getElementById('desembolso_completo_hidden').disabled = this.checked;">
+                                            name="desembolso_completo" value="on" {% if desembolso_sel=='on' or not
+                                            desembolso_sel %}checked{% endif %}
+                                            onchange="document.getElementById('desembolso_completo_hidden').disabled = this.checked;">
                                         <label class="form-check-label" for="desembolso_completo">
                                             <strong>Quiero recibir el monto completo que solicito</strong>
                                             <br>
@@ -173,251 +178,253 @@
 
                 <!-- Script para refrescar CSRF token antes de submit -->
                 <script>
-                document.getElementById('formSimulador').addEventListener('submit', async function(e) {
-                    e.preventDefault(); // Prevenir submit inmediato
+                    document.getElementById('formSimulador').addEventListener('submit', async function (e) {
+                        e.preventDefault(); // Prevenir submit inmediato
 
-                    const submitBtn = this.querySelector('button[type="submit"]');
-                    const originalText = submitBtn ? submitBtn.innerHTML : '';
+                        const submitBtn = this.querySelector('button[type="submit"]');
+                        const originalText = submitBtn ? submitBtn.innerHTML : '';
 
-                    // Deshabilitar botón durante la petición
-                    if (submitBtn) {
-                        submitBtn.disabled = true;
-                        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Calculando...';
-                    }
-
-                    try {
-                        // Obtener token fresco del servidor
-                        const response = await fetch('/api/csrf-token');
-                        const data = await response.json();
-
-                        // Actualizar input hidden con token nuevo
-                        const csrfInput = this.querySelector('input[name="csrf_token"]');
-                        if (csrfInput && data.csrf_token) {
-                            csrfInput.value = data.csrf_token;
-                        }
-
-                        // Ahora sí, enviar formulario
-                        this.submit();
-                    } catch (error) {
-                        console.error('Error obteniendo CSRF token:', error);
-                        // Si falla, restaurar botón y intentar enviar con token actual
+                        // Deshabilitar botón durante la petición
                         if (submitBtn) {
-                            submitBtn.disabled = false;
-                            submitBtn.innerHTML = originalText;
+                            submitBtn.disabled = true;
+                            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Calculando...';
                         }
-                        this.submit();
-                    }
-                });
+
+                        try {
+                            // Obtener token fresco del servidor
+                            const response = await fetch('/api/csrf-token');
+                            const data = await response.json();
+
+                            // Actualizar input hidden con token nuevo
+                            const csrfInput = this.querySelector('input[name="csrf_token"]');
+                            if (csrfInput && data.csrf_token) {
+                                csrfInput.value = data.csrf_token;
+                            }
+
+                            // Ahora sí, enviar formulario
+                            this.submit();
+                        } catch (error) {
+                            console.error('Error obteniendo CSRF token:', error);
+                            // Si falla, restaurar botón y intentar enviar con token actual
+                            if (submitBtn) {
+                                submitBtn.disabled = false;
+                                submitBtn.innerHTML = originalText;
+                            }
+                            this.submit();
+                        }
+                    });
                 </script>
+            </div>
+
+            <div class="text-center mt-3 text-muted">
+                <small>© 2025 Loansi - Simulador de Crédito</small>
+            </div>
         </div>
 
-        <div class="text-center mt-3 text-muted">
-            <small>© 2025 Loansi - Simulador de Crédito</small>
-        </div>
-    </div>
+        <script>
+            // ACTUALIZAR PLACEHOLDERS DINÁMICAMENTE
+            function actualizarPlaceholders() {
+                const select = document.getElementById('tipo_credito');
+                const option = select.options[select.selectedIndex];
 
-    <script>
-        // ACTUALIZAR PLACEHOLDERS DINÁMICAMENTE
-        function actualizarPlaceholders() {
-            const select = document.getElementById('tipo_credito');
-            const option = select.options[select.selectedIndex];
+                const montoMin = parseInt(option.dataset.min);
+                const montoMax = parseInt(option.dataset.max);
+                const plazoMin = parseInt(option.dataset.plazoMin);
+                const plazoMax = parseInt(option.dataset.plazoMax);
+                const plazoTipo = option.dataset.plazoTipo;
 
-            const montoMin = parseInt(option.dataset.min);
-            const montoMax = parseInt(option.dataset.max);
-            const plazoMin = parseInt(option.dataset.plazoMin);
-            const plazoMax = parseInt(option.dataset.plazoMax);
-            const plazoTipo = option.dataset.plazoTipo;
+                // Calcular ejemplo proporcional (punto medio)
+                const montoEjemplo = Math.round((montoMin + montoMax) / 2);
+                const plazoEjemplo = Math.round((plazoMin + plazoMax) / 2);
 
-            // Calcular ejemplo proporcional (punto medio)
-            const montoEjemplo = Math.round((montoMin + montoMax) / 2);
-            const plazoEjemplo = Math.round((plazoMin + plazoMax) / 2);
+                // Actualizar placeholder de monto
+                const montoInput = document.getElementById('monto');
+                montoInput.placeholder = `Ej: ${montoEjemplo.toLocaleString('es-CO')}`;
 
-            // Actualizar placeholder de monto
-            const montoInput = document.getElementById('monto');
-            montoInput.placeholder = `Ej: ${montoEjemplo.toLocaleString('es-CO')}`;
+                // Actualizar ayuda de monto
+                const montoAyuda = document.getElementById('monto-ayuda');
+                montoAyuda.textContent = `Monto entre $${montoMin.toLocaleString('es-CO')} y $${montoMax.toLocaleString('es-CO')}`;
 
-            // Actualizar ayuda de monto
-            const montoAyuda = document.getElementById('monto-ayuda');
-            montoAyuda.textContent = `Monto entre $${montoMin.toLocaleString('es-CO')} y $${montoMax.toLocaleString('es-CO')}`;
+                // Actualizar placeholder de plazo
+                const plazoInput = document.getElementById('plazo');
+                plazoInput.placeholder = `Ej: ${plazoEjemplo} ${plazoTipo}`;
 
-            // Actualizar placeholder de plazo
-            const plazoInput = document.getElementById('plazo');
-            plazoInput.placeholder = `Ej: ${plazoEjemplo} ${plazoTipo}`;
-
-            // Actualizar ayuda de plazo
-            const plazoAyuda = document.getElementById('plazo-ayuda');
-            plazoAyuda.textContent = `Plazo entre ${plazoMin} y ${plazoMax} ${plazoTipo}`;
-        }
-
-        // Formatear números
-        function formatNumber(input) {
-            let value = input.value.replace(/\./g, '');
-            value = value.replace(/\D/g, '');
-            value = value.replace(/^0+/, '');
-            if (value) {
-                input.value = value.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-            } else {
-                input.value = '';
+                // Actualizar ayuda de plazo
+                const plazoAyuda = document.getElementById('plazo-ayuda');
+                plazoAyuda.textContent = `Plazo entre ${plazoMin} y ${plazoMax} ${plazoTipo}`;
             }
-        }
 
-        document.addEventListener('DOMContentLoaded', function() {
-            // Actualizar placeholders al cargar
-            actualizarPlaceholders();
-
-            // Actualizar cuando cambia la línea de crédito
-            document.getElementById('tipo_credito').addEventListener('change', actualizarPlaceholders);
-
-            // Formatear monto
-            const montoInput = document.getElementById('monto');
-            if (montoInput) {
-                montoInput.addEventListener('input', function() {
-                    formatNumber(this);
-                });
+            // Formatear números
+            function formatNumber(input) {
+                let value = input.value.replace(/\./g, '');
+                value = value.replace(/\D/g, '');
+                value = value.replace(/^0+/, '');
+                if (value) {
+                    input.value = value.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+                } else {
+                    input.value = '';
+                }
             }
-        });
-    </script>
-    <script src="/static/js/theme-unified.js"></script>
 
-<script>
-function toggleCostosDetalle() {
-    const detalle = document.getElementById('costos-detalle');
-    const btnToggle = document.getElementById('btn-toggle-costos');
+            document.addEventListener('DOMContentLoaded', function () {
+                // Actualizar placeholders al cargar
+                actualizarPlaceholders();
 
-    if (detalle.style.display === 'none') {
-        detalle.style.display = 'block';
-        btnToggle.innerHTML = '<i class="bi bi-chevron-up"></i> Ocultar detalle';
-    } else {
-        detalle.style.display = 'none';
-        btnToggle.innerHTML = '<i class="bi bi-chevron-down"></i> Ver detalle';
-    }
-}
-</script>
+                // Actualizar cuando cambia la línea de crédito
+                document.getElementById('tipo_credito').addEventListener('change', actualizarPlaceholders);
 
-<script>
-// Inicializar estado del hidden (checkbox) al cargar página
-document.addEventListener('DOMContentLoaded', function() {
-    const checkbox = document.getElementById('desembolso_completo');
-    const hidden = document.getElementById('desembolso_completo_hidden');
-
-    if (checkbox && hidden) {
-        // Desactivar hidden si checkbox viene marcado
-        hidden.disabled = checkbox.checked;
-
-        console.log('📋 Estado inicial checkbox:', checkbox.checked);
-        console.log('📋 Estado inicial hidden disabled:', hidden.disabled);
-
-        // Mejorar visibilidad del checkbox en tema oscuro
-        const themeToggle = document.querySelector('.theme-toggle-public');
-        if (themeToggle) {
-            themeToggle.addEventListener('click', function() {
-                setTimeout(() => {
-                    // Trigger re-render
-                    checkbox.style.display = 'none';
-                    setTimeout(() => checkbox.style.display = '', 10);
-                }, 100);
-            });
-        }
-    }
-});
-</script>
-<script>
-// Mostrar/ocultar checkbox según configuración de línea
-document.addEventListener('DOMContentLoaded', function() {
-    const selectLinea = document.getElementById('tipo_credito');
-    const checkboxContainer = document.querySelector('.form-check').closest('.mt-3.pt-3');
-
-    async function actualizarConfigDesdeServidor() {
-        try {
-            const response = await fetch('/api/lineas-config');
-            if (!response.ok) return false;
-
-            const config = await response.json();
-
-            // Actualizar data-attributes de todas las opciones
-            Array.from(selectLinea.options).forEach(option => {
-                const nombreLinea = option.value;
-                if (config[nombreLinea]) {
-                    option.dataset.permiteNeto = config[nombreLinea].permite_desembolso_neto;
-                    option.dataset.modalidadDefecto = config[nombreLinea].desembolso_por_defecto;
+                // Formatear monto
+                const montoInput = document.getElementById('monto');
+                if (montoInput) {
+                    montoInput.addEventListener('input', function () {
+                        formatNumber(this);
+                    });
                 }
             });
+        </script>
+        <script src="/static/js/theme-unified.js"></script>
 
-            console.log('✅ Configuración actualizada desde servidor');
-            return true;
-        } catch (error) {
-            console.warn('⚠️ No se pudo actualizar config:', error);
-            return false;
-        }
-    }
+        <script>
+            function toggleCostosDetalle() {
+                const detalle = document.getElementById('costos-detalle');
+                const btnToggle = document.getElementById('btn-toggle-costos');
 
-    function actualizarVisibilidadCheckbox() {
-        const lineaSeleccionada = selectLinea.value;
-        const option = selectLinea.options[selectLinea.selectedIndex];
+                if (detalle.style.display === 'none') {
+                    detalle.style.display = 'block';
+                    btnToggle.innerHTML = '<i class="bi bi-chevron-up"></i> Ocultar detalle';
+                } else {
+                    detalle.style.display = 'none';
+                    btnToggle.innerHTML = '<i class="bi bi-chevron-down"></i> Ver detalle';
+                }
+            }
+        </script>
 
-        // Leer configuración desde data attributes
-        const permiteNeto = option.dataset.permiteNeto === 'true';
-        const modalidadDefecto = option.dataset.modalidadDefecto || 'completo';
+        <script>
+            // Inicializar estado del hidden (checkbox) al cargar página
+            document.addEventListener('DOMContentLoaded', function () {
+                const checkbox = document.getElementById('desembolso_completo');
+                const hidden = document.getElementById('desembolso_completo_hidden');
 
-        console.log(`📋 Línea: ${lineaSeleccionada}`);
-        console.log(`📋 Permite neto: ${permiteNeto}`);
-        console.log(`📋 Modalidad defecto: ${modalidadDefecto}`);
+                if (checkbox && hidden) {
+                    // Desactivar hidden si checkbox viene marcado
+                    hidden.disabled = checkbox.checked;
 
-        const checkbox = document.getElementById('desembolso_completo');
+                    console.log('📋 Estado inicial checkbox:', checkbox.checked);
+                    console.log('📋 Estado inicial hidden disabled:', hidden.disabled);
 
-        if (permiteNeto) {
-            // Mostrar checkbox
-            checkboxContainer.style.display = '';
-
-            // Establecer estado por defecto
-            checkbox.checked = (modalidadDefecto === 'completo');
-
-            // Actualizar hidden
-            const hidden = document.getElementById('desembolso_completo_hidden');
-            if (hidden) hidden.disabled = checkbox.checked;
-        } else {
-            // Ocultar checkbox - SIEMPRE desembolso completo
-            checkboxContainer.style.display = 'none';
-            checkbox.checked = true;
-
-            const hidden = document.getElementById('desembolso_completo_hidden');
-            if (hidden) hidden.disabled = true;
-        }
-    }
-
-    // Ejecutar al cargar
-    actualizarVisibilidadCheckbox();
-
-    // Al cambiar línea: actualizar config desde servidor y luego aplicar
-    selectLinea.addEventListener('change', async function() {
-        await actualizarConfigDesdeServidor();
-        actualizarVisibilidadCheckbox();
-    });
-});
-</script>
-<!-- Bootstrap JS (funcion botón X de las alertas) -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-
-<!-- Script para cerrar alertas al cambiar línea de crédito -->
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const selectLinea = document.getElementById('tipo_credito');
-
-    // Cerrar todas las alertas al cambiar de línea de crédito
-    if (selectLinea) {
-        selectLinea.addEventListener('change', function() {
-            const alertas = document.querySelectorAll('.alert');
-            alertas.forEach(function(alerta) {
-                // Usar Bootstrap para cerrar con animación
-                const bsAlert = bootstrap.Alert.getOrCreateInstance(alerta);
-                bsAlert.close();
+                    // Mejorar visibilidad del checkbox en tema oscuro
+                    const themeToggle = document.querySelector('.theme-toggle-public');
+                    if (themeToggle) {
+                        themeToggle.addEventListener('click', function () {
+                            setTimeout(() => {
+                                // Trigger re-render
+                                checkbox.style.display = 'none';
+                                setTimeout(() => checkbox.style.display = '', 10);
+                            }, 100);
+                        });
+                    }
+                }
             });
-        });
-    }
-});
-</script>
+        </script>
+        <script>
+            // Mostrar/ocultar checkbox según configuración de línea
+            document.addEventListener('DOMContentLoaded', function () {
+                const selectLinea = document.getElementById('tipo_credito');
+                const checkboxContainer = document.querySelector('.form-check').closest('.mt-3.pt-3');
+
+                async function actualizarConfigDesdeServidor() {
+                    try {
+                        const response = await fetch('/api/lineas-config');
+                        if (!response.ok) return false;
+
+                        const config = await response.json();
+
+                        // Actualizar data-attributes de todas las opciones
+                        Array.from(selectLinea.options).forEach(option => {
+                            const nombreLinea = option.value;
+                            if (config[nombreLinea]) {
+                                option.dataset.permiteNeto = config[nombreLinea].permite_desembolso_neto;
+                                option.dataset.modalidadDefecto = config[nombreLinea].desembolso_por_defecto;
+                            }
+                        });
+
+                        console.log('✅ Configuración actualizada desde servidor');
+                        return true;
+                    } catch (error) {
+                        console.warn('⚠️ No se pudo actualizar config:', error);
+                        return false;
+                    }
+                }
+
+                function actualizarVisibilidadCheckbox() {
+                    const lineaSeleccionada = selectLinea.value;
+                    const option = selectLinea.options[selectLinea.selectedIndex];
+
+                    // Leer configuración desde data attributes
+                    const permiteNeto = option.dataset.permiteNeto === 'true';
+                    const modalidadDefecto = option.dataset.modalidadDefecto || 'completo';
+
+                    console.log(`📋 Línea: ${lineaSeleccionada}`);
+                    console.log(`📋 Permite neto: ${permiteNeto}`);
+                    console.log(`📋 Modalidad defecto: ${modalidadDefecto}`);
+
+                    const checkbox = document.getElementById('desembolso_completo');
+
+                    if (permiteNeto) {
+                        // Mostrar checkbox
+                        checkboxContainer.style.display = '';
+
+                        // Establecer estado por defecto
+                        checkbox.checked = (modalidadDefecto === 'completo');
+
+                        // Actualizar hidden
+                        const hidden = document.getElementById('desembolso_completo_hidden');
+                        if (hidden) hidden.disabled = checkbox.checked;
+                    } else {
+                        // Ocultar checkbox - SIEMPRE desembolso completo
+                        checkboxContainer.style.display = 'none';
+                        checkbox.checked = true;
+
+                        const hidden = document.getElementById('desembolso_completo_hidden');
+                        if (hidden) hidden.disabled = true;
+                    }
+                }
+
+                // Ejecutar al cargar
+                actualizarVisibilidadCheckbox();
+
+                // Al cambiar línea: actualizar config desde servidor y luego aplicar
+                selectLinea.addEventListener('change', async function () {
+                    await actualizarConfigDesdeServidor();
+                    actualizarVisibilidadCheckbox();
+                });
+            });
+        </script>
+        <!-- Bootstrap JS (funcion botón X de las alertas) -->
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+        <!-- Script para cerrar alertas al cambiar línea de crédito -->
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const selectLinea = document.getElementById('tipo_credito');
+
+                // Cerrar todas las alertas al cambiar de línea de crédito
+                if (selectLinea) {
+                    selectLinea.addEventListener('change', function () {
+                        const alertas = document.querySelectorAll('.alert');
+                        alertas.forEach(function (alerta) {
+                            // Usar Bootstrap para cerrar con animación
+                            const bsAlert = bootstrap.Alert.getOrCreateInstance(alerta);
+                            bsAlert.close();
+                        });
+                    });
+                }
+            });
+        </script>
 
 </body>
+
 </html>
 </body>
+
 </html>

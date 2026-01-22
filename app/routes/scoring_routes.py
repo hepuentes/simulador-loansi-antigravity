@@ -154,6 +154,7 @@ def calcular_scoring():
         # Cargar configuración de scoring
         scoring_config = cargar_scoring()
         criterios = scoring_config.get("criterios", {})
+
         niveles_riesgo = scoring_config.get("niveles_riesgo", [])
         factores_rechazo = scoring_config.get("factores_rechazo_automatico", [])
         puntaje_minimo = scoring_config.get("puntaje_minimo_aprobacion", 17)
@@ -173,10 +174,52 @@ def calcular_scoring():
             peso = config_criterio.get("peso", 5)
             rangos = config_criterio.get("rangos", [])
             
-            puntaje_criterio = 0
-            for rango in rangos:
-                # Lógica de evaluación de rangos
+            # Determine range type (numeric vs categorical) based on config or value
+            # Actually, `valor` is string from form. We try to convert to float.
+            valor_num = None
+            try:
+                # Remove currency symbols if present
+                clean_val = str(valor).replace('$', '').replace('.', '').replace(',', '').strip()
+                if clean_val.isdigit():
+                     valor_num = float(clean_val)
+                else: 
+                     # Handle percentages "46" or "46%"
+                     clean_val = clean_val.replace('%', '')
+                     if clean_val.replace('.', '', 1).isdigit():
+                         valor_num = float(clean_val)
+            except:
                 pass
+
+            puntaje_criterio = 0
+            
+            # Find matching range
+            for rango in rangos:
+                rango_min = rango.get("min")
+                rango_max = rango.get("max")
+                rango_valor = rango.get("valor")
+                puntos = rango.get("puntos", 0)
+                
+                # Define bounds if numeric logic applies
+                lower_bound = float(rango_min) if rango_min is not None else float('-inf')
+                upper_bound = float(rango_max) if rango_max is not None else float('inf')
+
+
+                # Logic 1: Categorical Match
+                if rango_valor is not None:
+                     # Check exact match or substring
+                     if str(rango_valor).lower() == str(valor).lower():
+                         puntaje_criterio = puntos
+                         break
+                     # Sometimes Select values are codes like "rango_1", check that too
+                     if str(rango_valor) == str(valor):
+                         puntaje_criterio = puntos
+                         break
+                
+                # Logic 2: Numeric Range
+                elif valor_num is not None and (rango_min is not None or rango_max is not None):
+                     if lower_bound <= valor_num <= upper_bound:
+                         puntaje_criterio = puntos
+                         break
             
             score_total += puntaje_criterio
             criterios_evaluados.append({
@@ -226,14 +269,82 @@ def calcular_scoring():
         # Guardar evaluación
         guardar_evaluacion(evaluacion)
         
-        # Redirigir a resultado
+        # Re-renderizar el formulario con resultados incluidos
+        # Cargar de nuevo la configuración para mostrar el formulario
+        lineas_credito = cargar_configuracion().get("LINEAS_CREDITO", {})
+        criterios = scoring_config.get("criterios", {})
+        
+        # Agrupar criterios por sección
+        from db_helpers_scoring_linea import obtener_secciones_criterios
+        criterios_por_seccion = obtener_secciones_criterios(linea_credito)
+        
+        secciones = scoring_config.get("secciones", [])
+        scoring_criterios_agrupados = []
+        
+        for seccion in secciones:
+            seccion_criterios = criterios_por_seccion.get(seccion["id"], [])
+            if seccion_criterios:
+                scoring_criterios_agrupados.append({
+                    "seccion": seccion,
+                    "criterios": seccion_criterios
+                })
+        
+        criterios_sin_seccion = criterios_por_seccion.get("otros", [])
+        if criterios_sin_seccion:
+            scoring_criterios_agrupados.append({
+                "seccion": {"id": "otros", "nombre": "Otros Criterios", "icono": "bi-gear"},
+                "criterios": criterios_sin_seccion
+            })
+        
+        # Renderizar scoring.html con los resultados Y el formulario
         return render_template(
-            "asesor/resultado.html",
+            "scoring.html",
+            lineas_credito=lineas_credito,
+            criterios=criterios,
+            scoring_criterios=criterios,
+            scoring_criterios_agrupados=scoring_criterios_agrupados,
+            secciones=secciones,
+            scoring_secciones=secciones,
+            niveles_riesgo=niveles_riesgo,
+            factores_rechazo=factores_rechazo,
+            config_json=json.dumps({
+                "lineas_credito": lineas_credito,
+                "criterios": criterios,
+                "niveles_riesgo": niveles_riesgo
+            }),
+            # Agregar datos de resultado
             evaluacion=evaluacion,
-            resultado=evaluacion["resultado"]
+            resultado=evaluacion["resultado"],
+            form_values=form_data  # Para mantener valores del formulario
         )
         
     except Exception as e:
         traceback.print_exc()
         flash(f"Error procesando evaluación: {str(e)}", "error")
         return redirect(url_for("scoring.scoring_page"))
+
+
+@scoring_bp.route("/api/scoring/invalidar-cache", methods=["POST"])
+@login_required
+@requiere_permiso("cfg_sco_editar")
+def api_scoring_invalidar_cache():
+    """Invalida el cache de scoring."""
+    import sys
+    from pathlib import Path
+    BASE_DIR = Path(__file__).parent.parent.parent.resolve()
+    if str(BASE_DIR) not in sys.path:
+        sys.path.insert(0, str(BASE_DIR))
+        
+    from db_helpers_scoring_linea import invalidar_cache_scoring_linea
+    import logging
+    logger = logging.getLogger(__name__)
+
+    try:
+        linea_id = request.get_json().get("linea_id") if request.is_json else None
+
+        invalidar_cache_scoring_linea(linea_id)
+
+        return jsonify({"success": True, "message": "Cache de scoring invalidado"})
+    except Exception as e:
+        logger.error(f"Error invalidando cache: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500

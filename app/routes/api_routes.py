@@ -307,11 +307,11 @@ def api_scoring_lineas():
     if str(BASE_DIR) not in sys.path:
         sys.path.insert(0, str(BASE_DIR))
     
-    from app.utils.decorators import no_cache_and_check_session, admin_required, requiere_permiso
-    from db_helpers import (
-        obtener_lineas_credito, cursor_factory, 
-        obtener_parametros_capacidad, guardar_parametros_capacidad
-    )
+    # from app.utils.decorators import no_cache_and_check_session, admin_required, requiere_permiso (ERROR: Module not found)
+    
+    # from db_helpers import (
+    #     obtener_parametros_capacidad, guardar_parametros_capacidad
+    # )
     from db_helpers_scoring_linea import (
         obtener_config_scoring_linea, 
         guardar_config_scoring_linea,
@@ -321,7 +321,7 @@ def api_scoring_lineas():
         guardar_criterios_completos_linea,
         copiar_config_scoring
     )
-    from db_helpers_comite import obtener_casos_pendientes_comite
+    # from db_helpers_comite import obtener_casos_pendientes_comite (Check if used? It is not used in this function)
     
     try:
         lineas = obtener_lineas_credito_scoring()
@@ -591,6 +591,8 @@ def api_estadisticas_estados():
 @api_requiere_permiso("admin_panel_acceso")
 def guardar_criterios_linea(linea_id):
     """Guarda los criterios de scoring para una línea específica"""
+    from db_helpers_scoring_linea import guardar_criterios_completos_linea
+    
     try:
         data = request.get_json()
         # El frontend puede mandar 'criterios' o ser una lista directa
@@ -600,6 +602,34 @@ def guardar_criterios_linea(linea_id):
             return jsonify({"success": True})
         else:
             return jsonify({"success": False, "error": "Error al guardar criterios"}), 500
+            
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@api_bp.route("/scoring/invalidar-cache", methods=["POST"])
+@api_login_required
+@api_requiere_permiso("admin_panel_acceso")
+def api_invalidar_cache():
+    """Invalida el caché de configuración de scoring"""
+    import sys
+    from pathlib import Path
+    BASE_DIR = Path(__file__).parent.parent.parent.resolve()
+    if str(BASE_DIR) not in sys.path:
+        sys.path.insert(0, str(BASE_DIR))
+    
+    try:
+        from db_helpers_scoring_linea import invalidar_cache_scoring_linea
+        from db_helpers import cargar_configuracion # To force reload if needed
+        
+        # Invalidar cache de scoring
+        invalidar_cache_scoring_linea()
+        
+        return jsonify({
+            "success": True, 
+            "message": "Caché invalidado correctamente"
+        })
             
     except Exception as e:
         traceback.print_exc()
@@ -647,6 +677,226 @@ def guardar_factores_rechazo(linea_id):
         else:
             return jsonify({"success": False, "error": "Error al guardar factores de rechazo"}), 500
             
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@api_bp.route("/debug/session", methods=["GET"])
+@api_login_required
+@api_requiere_permiso("aud_ver_todos")
+def api_debug_session():
+    """Endpoint temporal para debugging de sesión"""
+    return jsonify(
+        {
+            "session_keys": list(session.keys()),
+            "username": session.get("username"),
+            "rol": session.get("rol"),
+            "session_id": session.get("_id", "N/A"),
+            "permanent": session.permanent,
+            "all_session": dict(session),
+        }
+    )
+
+
+@api_bp.route("/db_diagnostics", methods=["GET"])
+@api_login_required
+@api_requiere_permiso("aud_ver_todos")
+def api_db_diagnostics():
+    """
+    Endpoint de diagnóstico para verificar estado de SQLite.
+    Solo accesible por admin.
+    """
+    import sys
+    from pathlib import Path
+    BASE_DIR = Path(__file__).parent.parent.parent.resolve()
+    if str(BASE_DIR) not in sys.path:
+        sys.path.insert(0, str(BASE_DIR))
+        
+    try:
+        from database import (
+            conectar_db,
+            verificar_integridad_db,
+            listar_tablas,
+            contar_registros_tabla
+        )
+        import sqlite3
+
+        # 1. Verificar conexión
+        conn = conectar_db()
+        conn.close()
+
+        # 2. Verificar integridad (usando función existente)
+        tablas_ok = verificar_integridad_db()
+
+        # 3. Obtener estadísticas de tablas (manual loop)
+        tablas = listar_tablas()
+        stats = {}
+        for tabla in tablas:
+            stats[tabla] = contar_registros_tabla(tabla)
+
+        # 4. Verificar WAL mode
+        conn = conectar_db()
+        cursor = conn.cursor()
+        cursor.execute("PRAGMA journal_mode;")
+        journal_mode = cursor.fetchone()[0]
+        conn.close()
+
+        return jsonify(
+            {
+                "status": "ok",
+                "database_connection": "success",
+                "tables_integrity": tablas_ok,
+                "table_stats": stats,
+                "journal_mode": journal_mode,
+                "python_sqlite_version": sqlite3.version,
+                "sqlite_lib_version": sqlite3.sqlite_version,
+            }
+        )
+
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify(
+            {"status": "error", "error": str(e), "traceback": traceback.format_exc()}
+        ), 500
+
+
+# ============================================================================
+# API DE PERMISOS
+# ============================================================================
+
+@api_bp.route("/permisos/cache/invalidar", methods=["POST"])
+@api_login_required
+@api_requiere_permiso("usr_permisos")
+def api_permisos_cache_invalidar():
+    """Invalidar cache de permisos"""
+    import sys
+    from pathlib import Path
+    BASE_DIR = Path(__file__).parent.parent.parent.resolve()
+    if str(BASE_DIR) not in sys.path:
+        sys.path.insert(0, str(BASE_DIR))
+    
+    try:
+        from permisos import invalidar_cache_permisos
+        invalidar_cache_permisos()
+        
+        print("🔄 [API] Cache de permisos invalidado")
+        
+        return jsonify({
+            "success": True,
+            "message": "Cache de permisos invalidado correctamente"
+        })
+        
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@api_bp.route("/permisos/matriz", methods=["GET"])
+@api_login_required
+@api_requiere_permiso("usr_permisos")
+def api_permisos_matriz():
+    """Obtener matriz de permisos por rol"""
+    import sys
+    from pathlib import Path
+    BASE_DIR = Path(__file__).parent.parent.parent.resolve()
+    if str(BASE_DIR) not in sys.path:
+        sys.path.insert(0, str(BASE_DIR))
+    
+    try:
+        from permisos import obtener_matriz_permisos, obtener_todos_permisos
+        
+        matriz = obtener_matriz_permisos()
+        permisos = obtener_todos_permisos()
+        roles = ["asesor", "supervisor", "gerente", "admin"]
+        
+        return jsonify({
+            "success": True,
+            "matriz": matriz,
+            "permisos": permisos,
+            "roles": roles
+        })
+        
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@api_bp.route("/permisos/protegidos", methods=["GET"])
+@api_login_required
+@api_requiere_permiso("usr_permisos")
+def api_permisos_protegidos():
+    """Obtener lista de permisos protegidos"""
+    import sys
+    from pathlib import Path
+    BASE_DIR = Path(__file__).parent.parent.parent.resolve()
+    if str(BASE_DIR) not in sys.path:
+        sys.path.insert(0, str(BASE_DIR))
+    
+    try:
+        from permisos import obtener_permisos_protegidos
+        
+        protegidos = obtener_permisos_protegidos()
+        
+        return jsonify({
+            "success": True,
+            "protegidos": protegidos
+        })
+        
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@api_bp.route("/permisos/usuario/<int:user_id>", methods=["GET"])
+@api_login_required
+@api_requiere_permiso("usr_permisos")
+def api_permisos_usuario(user_id):
+    """Obtener permisos detallados de un usuario"""
+    import sys
+    from pathlib import Path
+    BASE_DIR = Path(__file__).parent.parent.parent.resolve()
+    if str(BASE_DIR) not in sys.path:
+        sys.path.insert(0, str(BASE_DIR))
+    
+    try:
+        from permisos import obtener_permisos_usuario_detallados
+        
+        permisos = obtener_permisos_usuario_detallados(user_id)
+        
+        return jsonify({
+            "success": True,
+            "permisos": permisos
+        })
+        
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@api_bp.route("/permisos/limpiar-overrides", methods=["POST"])
+@api_login_required
+@api_requiere_permiso("usr_permisos")
+def api_permisos_limpiar_overrides():
+    """Limpiar overrides de permisos sin efecto"""
+    import sys
+    from pathlib import Path
+    BASE_DIR = Path(__file__).parent.parent.parent.resolve()
+    if str(BASE_DIR) not in sys.path:
+        sys.path.insert(0, str(BASE_DIR))
+    
+    try:
+        from permisos import limpiar_overrides_sin_efecto
+        
+        eliminados = limpiar_overrides_sin_efecto()
+        
+        print(f"🧹 [API] Overrides limpiados: {eliminados}")
+        
+        return jsonify({
+            "success": True,
+            "eliminados": eliminados
+        })
+        
     except Exception as e:
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500

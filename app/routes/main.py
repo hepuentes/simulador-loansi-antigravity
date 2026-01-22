@@ -21,10 +21,32 @@ def login_required(f):
 
 @main_bp.route("/")
 def home():
-    """Página principal - redirige según estado de sesión"""
+    """Página principal - Simulador público si no hay sesión, o dashboard si hay sesión"""
     if session.get("autorizado"):
         return redirect(url_for("main.dashboard"))
-    return redirect(url_for("auth.login"))
+    
+    # Si no está logueado, mostrar simulador público
+    import sys
+    from pathlib import Path
+    BASE_DIR = Path(__file__).parent.parent.parent.resolve()
+    if str(BASE_DIR) not in sys.path:
+        sys.path.insert(0, str(BASE_DIR))
+        
+    from db_helpers import cargar_configuracion
+    
+    config = cargar_configuracion()
+    lineas_credito = config.get("LINEAS_CREDITO", {})
+    
+    return render_template(
+        "cliente/formulario.html",
+        lineas=lineas_credito
+    )
+
+
+@main_bp.route("/simulador-publico")
+def simulador_publico():
+    """Alias explícito para el simulador público"""
+    return home()
 
 
 @main_bp.route("/dashboard")

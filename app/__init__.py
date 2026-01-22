@@ -29,6 +29,14 @@ def create_app(config_name=None):
     Returns:
         Flask: Instancia configurada de la aplicación
     """
+    # Configurar logging básico (compatible con PythonAnywhere)
+    import logging
+    logging.basicConfig(
+        level=logging.ERROR,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
     # Crear instancia de Flask
     app = Flask(
         __name__,

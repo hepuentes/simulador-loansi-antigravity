@@ -1,0 +1,39 @@
+
+Running Case A...
+  Matched 'LoansiFlex' to option 'LoansiFlex' for code 'tipo_credito'
+  Matched '81-100%' to option '5' for code 'proporcion_saldo_cupo'
+  Matched 'Empleado indefinido' to option '0' for code 'criterio_1753284665359'
+  Matched 'Comercio' to option '3' for code 'criterio_1753285008278'
+  Matched 'Propia con hipoteca' to option '1' for code 'criterio_1753285290128'
+  Matched 'Libre inversi¾n' to option '0' for code 'criterio_1753285207809'
+  Matched 'Completa y formal' to option '10' for code 'verificacion_documental'
+Response received
+  Score: 285
+  Risk: Alto riesgo
+  Decision: Aprobado
+
+Running Case B...
+  Matched 'LoansiMoto' to option 'LoansiMoto' for code 'tipo_credito'
+Warning: No option match for 'No tiene' in proporcion_saldo_cupo. Options: ['\n                                                                0-20% (Utilizaci¾n baja - Excelente control)\n                                                            ', '\n                                                                21-40% (Utilizaci¾n moderada - Buen manejo)\n                                                            ', '\n                                                                41-60% (Utilizaci¾n considerable - Aceptable)\n                                                            ', '\n                                                                61-80% (Utilizaci¾n alta - Riesgoso)\n                                                            ', '\n                                                                81-100% (Utilizaci¾n crÝtica - Cupo agotado)\n                                                            ']...
+  Matched 'Independiente' to option '3' for code 'criterio_1753284665359'
+  Matched 'Transporte' to option '5' for code 'criterio_1753285008278'
+  Matched 'Familiar' to option '3' for code 'criterio_1753285290128'
+Warning: No option match for 'Compra de Moto' in criterio_1753285207809. Options: ['\n                                                                Libre inversi¾n\n                                                            ', '\n                                                                VehÝculo\n                                                            ', '\n                                                                Mejoras hogar\n                                                            ', '\n                                                                Educaci¾n\n                                                            ', '\n                                                                Consolidaci¾n deudas\n                                                            ']...
+Warning: No option match for 'Parcial' in verificacion_documental. Options: ['\n                                                                Documentaci¾n completa y formal (desprendibles de n¾mina 3+ meses + comprobante residencia vigente + cÚdula legible)\n                                                            ', '\n                                                                Documentaci¾n completa pero informal (extractos bancarios 3+ meses + comprobante residencia + cÚdula OK)\n                                                            ', '\n                                                                Documentaci¾n bßsica aceptable (comprobante ingresos 1 mes + declaraci¾n verbal de residencia + cÚdula OK)\n                                                            ', '\n                                                                Documentaci¾n mÝnima (solo declaraci¾n verbal de ingresos + cÚdula legible)\n                                                            ', '\n                                                                Documentaci¾n deficiente o con inconsistencias graves (documentos alterados, nombres no coinciden, cÚdula no vigente)\n                                                            ']...
+Response received
+  Score: 200
+  Risk: Alto riesgo
+  Decision: Aprobado
+
+Running Case C...
+  Matched 'LoansiFlex' to option 'LoansiFlex' for code 'tipo_credito'
+  Matched '0-20%' to option '1' for code 'proporcion_saldo_cupo'
+Warning: No option match for 'Pensionado' in criterio_1753284665359. Options: ['\n                                                                Empleado indefinido\n                                                            ', '\n                                                                Empleado tÚrmino fijo\n                                                            ', '\n                                                                Contratista con empresa\n                                                            ', '\n                                                                Independiente con RUT/Cßmara Comercio\n                                                            ', '\n                                                                Prestaci¾n servicios recurrente\n                                                            ']...
+  Matched 'Financiero' to option '1' for code 'criterio_1753285008278'
+  Matched 'Propia sin deuda' to option '0' for code 'criterio_1753285290128'
+Warning: No option match for 'Otros' in criterio_1753285207809. Options: ['\n                                                                Libre inversi¾n\n                                                            ', '\n                                                                VehÝculo\n                                                            ', '\n                                                                Mejoras hogar\n                                                            ', '\n                                                                Educaci¾n\n                                                            ', '\n                                                                Consolidaci¾n deudas\n                                                            ']...
+  Matched 'Completa' to option '10' for code 'verificacion_documental'
+Response received
+  Score: 400
+  Risk: Alto riesgo
+  Decision: Aprobado

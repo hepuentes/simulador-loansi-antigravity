@@ -107,7 +107,19 @@ def admin_panel():
     # Convertir lista a diccionario indexado por username (formato esperado por template)
     usuarios = {u['username']: u for u in usuarios_lista}
 
-    lineas_credito = config.get("LINEAS_CREDITO", {})
+    # Cargar líneas de crédito y FILTRAR solo las válidas
+    all_lineas_credito = config.get("LINEAS_CREDITO", {})
+    
+    # Filtrar líneas de crédito válidas (con campos requeridos)
+    lineas_credito = {}
+    for nombre, datos in all_lineas_credito.items():
+        # Validar que sea un dict y tenga campos mínimos
+        if isinstance(datos, dict) and datos.get("monto_min") is not None:
+            lineas_credito[nombre] = datos
+        else:
+            # Log líneas inválidas para debugging
+            print(f"⚠️ Línea de crédito '{nombre}' ignorada - datos incompletos o inválidos")
+    
     costos_asociados = config.get("COSTOS_ASOCIADOS", {})
     parametros_capacidad = config.get("PARAMETROS_CAPACIDAD_PAGO", {})
     config_comite = config.get("COMITE_CREDITO", {})
@@ -498,6 +510,91 @@ def asignaciones_equipo():
 # RUTAS DE LÍNEAS DE CRÉDITO
 # ============================================================================
 
+@admin_bp.route("/lineas", methods=["POST"])
+@login_required
+def lineas_legacy():
+    """
+    Legacy route for /admin/lineas POST.
+    This route handles inline edits from the admin panel line cards.
+    It acts as a proxy to editar_linea_credito.
+    """
+    print("📝 [LEGACY] POST /admin/lineas called")
+    # Delegate to the edit function - the form has tipo_credito as name
+    return editar_linea_credito_legacy()
+
+
+def editar_linea_credito_legacy():
+    """Internal function to handle legacy /admin/lineas POST"""
+    import sys
+    from pathlib import Path
+    BASE_DIR = Path(__file__).parent.parent.parent.resolve()
+    if str(BASE_DIR) not in sys.path:
+        sys.path.insert(0, str(BASE_DIR))
+    
+    if not tiene_alguno_de(["cfg_lin_editar", "cfg_tasas_editar"]):
+        flash("No tienes permiso para editar líneas de crédito", "warning")
+        return redirect(url_for("admin.admin_panel"))
+
+    from db_helpers import cargar_configuracion, guardar_configuracion
+    from ..utils.formatting import parse_currency_value
+
+    try:
+        # The legacy form uses 'tipo_credito' as the line name
+        nombre = request.form.get("tipo_credito", "").strip()
+        
+        print(f"📝 [LEGACY] Editing line: {nombre}")
+
+        if not nombre:
+            flash("El nombre de la línea es requerido", "error")
+            return redirect(url_for("admin.admin_panel") + "#TasasCredito")
+
+        config = cargar_configuracion()
+        lineas = config.get("LINEAS_CREDITO", {})
+
+        if nombre not in lineas:
+            flash(f"Línea '{nombre}' no encontrada", "error")
+            return redirect(url_for("admin.admin_panel") + "#TasasCredito")
+
+        # Update the line data from form
+        linea_data = lineas[nombre]
+        
+        # Only update fields that are present in the form
+        if request.form.get("descripcion"):
+            linea_data["descripcion"] = request.form.get("descripcion")
+        if request.form.get("monto_min"):
+            linea_data["monto_min"] = parse_currency_value(request.form.get("monto_min"))
+        if request.form.get("monto_max"):
+            linea_data["monto_max"] = parse_currency_value(request.form.get("monto_max"))
+        if request.form.get("plazo_min"):
+            linea_data["plazo_min"] = int(request.form.get("plazo_min"))
+        if request.form.get("plazo_max"):
+            linea_data["plazo_max"] = int(request.form.get("plazo_max"))
+        if request.form.get("tasa_mensual"):
+            linea_data["tasa_mensual"] = float(request.form.get("tasa_mensual"))
+        if request.form.get("tasa_anual"):
+            linea_data["tasa_anual"] = float(request.form.get("tasa_anual"))
+        if request.form.get("aval_porcentaje"):
+            linea_data["aval_porcentaje"] = float(request.form.get("aval_porcentaje"))
+        if request.form.get("plazo_tipo"):
+            linea_data["plazo_tipo"] = request.form.get("plazo_tipo")
+        linea_data["permite_desembolso_neto"] = request.form.get("permite_desembolso_neto") == "on"
+        if request.form.get("desembolso_por_defecto"):
+            linea_data["desembolso_por_defecto"] = request.form.get("desembolso_por_defecto")
+
+        lineas[nombre] = linea_data
+        config["LINEAS_CREDITO"] = lineas
+        
+        guardar_configuracion(config)
+        print(f"✅ [LEGACY] Line '{nombre}' updated successfully")
+        flash(f"Línea '{nombre}' actualizada correctamente", "success")
+
+    except Exception as e:
+        traceback.print_exc()
+        flash(f"Error al editar línea: {str(e)}", "error")
+
+    return redirect(url_for("admin.admin_panel") + "#TasasCredito")
+
+
 @admin_bp.route("/lineas/nueva", methods=["POST"])
 @login_required
 def crear_linea_credito():
@@ -517,7 +614,10 @@ def crear_linea_credito():
     from ..utils.formatting import parse_currency_value
 
     try:
-        nombre = request.form.get("nombre", "").strip()
+        # Accept both 'nombre' and 'nombre_linea' for frontend compatibility
+        nombre = request.form.get("nombre") or request.form.get("nombre_linea", "").strip()
+        
+        print(f"📝 [CREAR] nombre={nombre}")
 
         if not nombre:
             flash("El nombre de la línea es requerido", "error")
@@ -594,7 +694,10 @@ def editar_linea_credito():
     try:
         # El nombre original viene en un campo oculto o es el mismo nombre si no se permite cambiar
         nombre_original = request.form.get("nombre_original")
-        nombre = request.form.get("nombre", "").strip()
+        # Accept both 'nombre' and 'nombre_linea' for frontend compatibility
+        nombre = request.form.get("nombre") or request.form.get("nombre_linea", "").strip()
+        
+        print(f"📝 [EDITAR] nombre_original={nombre_original}, nombre={nombre}")
 
         if not nombre:
             flash("El nombre de la línea es requerido", "error")
@@ -668,7 +771,8 @@ def eliminar_linea_credito():
     from db_helpers import eliminar_linea_credito_db
 
     try:
-        nombre = request.form.get("nombre")
+        # Accept both 'nombre' and 'nombre_linea' for backward compatibility
+        nombre = request.form.get("nombre") or request.form.get("nombre_linea")
 
         if not nombre:
             flash("Nombre de línea no especificado", "error")
@@ -879,3 +983,36 @@ def guardar_scoring():
     except Exception as e:
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
+
+
+@admin_bp.route("/actualizar_umbral_mora_telcos", methods=["POST"])
+@login_required
+@requiere_permiso("cfg_sco_editar")
+def actualizar_umbral_mora_telcos():
+    """Actualizar umbral de mora de telecomunicaciones"""
+    import sys
+    from pathlib import Path
+    BASE_DIR = Path(__file__).parent.parent.parent.resolve()
+    if str(BASE_DIR) not in sys.path:
+        sys.path.insert(0, str(BASE_DIR))
+
+    from db_helpers import cargar_scoring, guardar_scoring
+
+    try:
+        data = request.get_json()
+        umbral = data.get("umbral")
+
+        if umbral is None:
+            return jsonify({"success": False, "error": "Umbral no especificado"}), 400
+
+        print(f"📝 [ADMIN] Actualizando umbral_mora_telcos a: {umbral}")
+
+        scoring = cargar_scoring()
+        scoring["umbral_mora_telcos_rechazo"] = float(umbral)
+        guardar_scoring(scoring)
+
+        return jsonify({"success": True, "message": "Umbral actualizado correctamente"})
+
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
