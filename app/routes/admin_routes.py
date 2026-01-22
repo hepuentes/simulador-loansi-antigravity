@@ -783,24 +783,64 @@ def guardar_capacidad():
     from db_helpers import cargar_configuracion, guardar_configuracion
 
     try:
+        data = request.form
+        # Si viene como JSON (fetch)
+        if request.is_json:
+            data = request.get_json()
+        
+        # Validar datos recibidos
+        try:
+            limite_conservador = int(data.get("limite_conservador", 30))
+            limite_maximo = int(data.get("limite_maximo", 35))
+            limite_absoluto = int(data.get("limite_absoluto", 40))
+        except ValueError:
+             if request.is_json:
+                 return jsonify({"success": False, "error": "Los límites deben ser números enteros"}), 400
+             flash("Los límites deben ser números enteros", "error")
+             return redirect(url_for("admin.admin_panel") + "#CapacidadPago")
+
+        # Validar rangos
+        if not (10 <= limite_conservador <= 50):
+             msg = "Límite conservador debe estar entre 10% y 50%"
+             if request.is_json:
+                 return jsonify({"success": False, "error": msg}), 400
+             flash(msg, "error")
+             return redirect(url_for("admin.admin_panel") + "#CapacidadPago")
+
+        if not (limite_conservador < limite_maximo < limite_absoluto):
+             msg = "Los límites deben seguir el orden: Conservador < Máximo < Absoluto"
+             if request.is_json:
+                 return jsonify({"success": False, "error": msg}), 400
+             flash(msg, "error")
+             return redirect(url_for("admin.admin_panel") + "#CapacidadPago")
+
+        if limite_absoluto > 90:
+             msg = "El límite absoluto no puede exceder el 90%"
+             if request.is_json:
+                 return jsonify({"success": False, "error": msg}), 400
+             flash(msg, "error")
+             return redirect(url_for("admin.admin_panel") + "#CapacidadPago")
+
         config = cargar_configuracion()
         params = config.get("PARAMETROS_CAPACIDAD_PAGO", {})
         
-        # Actualizar valores del formulario
-        for key in request.form:
-            if key in ["csrf_token"]: continue
-            # Intentar convertir a número si es posible
-            try:
-                params[key] = float(request.form[key])
-            except ValueError:
-                params[key] = request.form[key]
+        # Actualizar valores
+        params["limite_conservador"] = limite_conservador
+        params["limite_maximo"] = limite_maximo
+        params["limite_absoluto"] = limite_absoluto
         
         config["PARAMETROS_CAPACIDAD_PAGO"] = params
         guardar_configuracion(config)
+        
+        if request.is_json:
+            return jsonify({"success": True, "message": "Parámetros guardados correctamente"})
+        
         flash("Parámetros de capacidad guardados correctamente", "success")
 
     except Exception as e:
         traceback.print_exc()
+        if request.is_json:
+            return jsonify({"success": False, "error": str(e)}), 500
         flash(f"Error al guardar capacidad: {str(e)}", "error")
 
     return redirect(url_for("admin.admin_panel") + "#CapacidadPago")

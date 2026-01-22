@@ -16,6 +16,16 @@ from .formatting import (
     parse_currency_value
 )
 
+from .finance import (
+    calcular_cuota,
+    calcular_edad_desde_fecha,
+    calcular_seguro_proporcional_fecha,
+    calcular_seguro_anual,
+    obtener_aval_dinamico,
+    obtener_tasa_por_nivel_riesgo,
+    SEMANAS_POR_MES
+)
+
 from .security import (
     cargar_login_attempts,
     guardar_login_attempts,
@@ -54,4 +64,12 @@ __all__ = [
     'recuperar_desde_backup_mas_reciente',
     # Logging
     'log_db_operation',
+    # Finance
+    'calcular_cuota',
+    'calcular_edad_desde_fecha',
+    'calcular_seguro_proporcional_fecha',
+    'calcular_seguro_anual',
+    'obtener_aval_dinamico',
+    'obtener_tasa_por_nivel_riesgo',
+    'SEMANAS_POR_MES',
 ]

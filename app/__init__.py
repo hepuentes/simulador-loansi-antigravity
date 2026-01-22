@@ -57,7 +57,7 @@ def create_app(config_name=None):
     # Registrar manejadores de errores
     register_error_handlers(app)
 
-   # Registrar blueprints (rutas)
+    # Registrar blueprints (rutas)
     from .routes import register_blueprints
     register_blueprints(app)
 

@@ -68,7 +68,7 @@
                     {% endif %}
                 {% endwith %}
 
-                <form action="/calcular" method="post" id="formSimulador">
+                <form action="{{ url_for('simulador.calcular_cliente') }}" method="post" id="formSimulador">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
 
                     <div class="mb-3">

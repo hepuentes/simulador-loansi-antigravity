@@ -583,28 +583,12 @@ def api_estadisticas_estados():
         }), 500
 
 
-@api_bp.route("/scoring/linea/<int:linea_id>/factores-rechazo", methods=["POST"])
-@api_login_required
-@requiere_permiso("admin_panel_acceso")
-def guardar_factores_rechazo(linea_id):
-    """Guarda los factores de rechazo para una línea específica"""
-    try:
-        data = request.get_json()
-        factores = data.get("factores", [])
-        
-        if guardar_factores_rechazo_linea(linea_id, factores):
-            return jsonify({"success": True})
-        else:
-            return jsonify({"success": False, "error": "Error al guardar factores"}), 500
-            
-    except Exception as e:
-        traceback.print_exc()
-        return jsonify({"success": False, "error": str(e)}), 500
+
 
 
 @api_bp.route("/scoring/linea/<int:linea_id>/criterios", methods=["POST"])
 @api_login_required
-@requiere_permiso("admin_panel_acceso")
+@api_requiere_permiso("admin_panel_acceso")
 def guardar_criterios_linea(linea_id):
     """Guarda los criterios de scoring para una línea específica"""
     try:
@@ -624,7 +608,7 @@ def guardar_criterios_linea(linea_id):
 
 @api_bp.route("/scoring/copiar-config", methods=["POST"])
 @api_login_required
-@requiere_permiso("admin_panel_acceso")
+@api_requiere_permiso("admin_panel_acceso")
 def copiar_configuracion_scoring():
     """Copia la configuración de scoring de una línea a otra"""
     try:
@@ -641,12 +625,14 @@ def copiar_configuracion_scoring():
         else:
             return jsonify({"success": False, "error": "Error al copiar configuración"}), 500
             
+    except Exception as e:
+        traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
 
 
 @api_bp.route("/scoring/linea/<int:linea_id>/factores-rechazo", methods=["POST"])
 @api_login_required
-@requiere_permiso("admin_panel_acceso")
+@api_requiere_permiso("admin_panel_acceso")
 def guardar_factores_rechazo(linea_id):
     """Guarda los factores de rechazo para una línea específica"""
     try:
