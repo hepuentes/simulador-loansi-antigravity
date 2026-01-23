@@ -147,7 +147,7 @@ def admin_panel():
     }
 
     return render_template(
-        "admin/admin_fixed.html",
+        "admin/admin.html",
         lineas_credito=lineas_credito,
         lineas_scoring=lineas_scoring,
         costos_asociados=costos_asociados,

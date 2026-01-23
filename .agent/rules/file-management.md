@@ -7,11 +7,8 @@ trigger: always_on
 ## CRÍTICO: Prevención de Duplicados
 
 ### Antes de Editar CUALQUIER Archivo
-1. Ejecuta `find . -name "filename*" -type f` para identificar duplicados
-2. Verifica cuál archivo está siendo usado buscando:
-   - render_template() en rutas Python
-   - import statements
-   - {% extends %} y {% include %}
+1. Busca archivos similares primero
+2. Verifica cuál archivo está siendo usado en render_template()
 3. Si existen duplicados, PREGUNTA al usuario cuál editar
 
 ### Archivos a NUNCA Modificar
@@ -20,24 +17,32 @@ trigger: always_on
 - Archivos .pyc, __pycache__/
 
 ### Template Activo de Admin
-El template admin activo es: `templates/admin.html`
-NUNCA editar: admin_fixed.html, admin_backup.html, o similares
+El template admin activo es: templates/admin/admin.html
+NUNCA editar archivos con nombres similares si existen
 
-### Verificación de Rutas Flask
-Antes de modificar un template, confirma su uso:
-```python
-# Buscar en routes/views:
-grep -r "render_template.*admin" *.py
+## Verificación de Persistencia de Cambios (Windows PowerShell)
+
+### Después de CADA modificación:
+1. Verificar que el archivo existe:
+```powershell
+   Test-Path "ruta/al/archivo.html"
 ```
 
-### Persistencia de Cambios
-Después de CADA modificación:
-1. Guarda explícitamente (Ctrl+S)
-2. Verifica con: git status
-3. Confirma contenido: git diff <archivo>
-4. Si git no muestra cambios, los cambios NO se guardaron
+2. Ver contenido del archivo para confirmar cambios:
+```powershell
+   Get-Content "ruta/al/archivo.html" | Select-String "texto_nuevo"
+```
 
-### Rutas Absolutas Obligatorias
-SIEMPRE usa rutas completas al referenciar archivos:
-- ✅ templates/admin.html
-- ❌ admin.html
+3. Ver fecha de modificación:
+```powershell
+   Get-Item "ruta/al/archivo.html" | Select-Object LastWriteTime
+```
+
+## Credenciales de Prueba
+Para pruebas que requieran login, usar las credenciales definidas en:
+`.agent/rules/test-credentials.md`
+
+## Rutas del Proyecto
+- templates/admin/admin.html
+- app/routes/admin_routes.py
+- static/css/theme.css
