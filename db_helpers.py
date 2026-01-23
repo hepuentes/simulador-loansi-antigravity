@@ -2097,6 +2097,7 @@ def remove_assignment_by_id(assignment_id):
         )
 
         conn.commit()
+        print(f"✅ Delete assignment_id={assignment_id}: rowcount={cursor.rowcount}")
         return cursor.rowcount > 0
     except Exception as e:
         conn.rollback()

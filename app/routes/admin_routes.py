@@ -147,7 +147,7 @@ def admin_panel():
     }
 
     return render_template(
-        "admin/admin.html",
+        "admin/admin_fixed.html",
         lineas_credito=lineas_credito,
         lineas_scoring=lineas_scoring,
         costos_asociados=costos_asociados,
@@ -471,11 +471,11 @@ def asignaciones_equipo():
     )
 
     if request.method == "POST":
-        action = request.form.get("action")
+        action = request.form.get("accion")
 
-        if action == "add":
-            manager = request.form.get("manager")
-            member = request.form.get("member")
+        if action == "agregar":
+            manager = request.form.get("manager_username")
+            member = request.form.get("member_username")
 
             if manager and member:
                 if add_assignment(manager, member):
@@ -483,13 +483,18 @@ def asignaciones_equipo():
                 else:
                     flash("Error al crear asignación", "error")
 
-        elif action == "remove":
+        elif action == "eliminar":
             assignment_id = request.form.get("assignment_id")
+            print(f"DTO ELIMINAR: id={assignment_id}")
             if assignment_id:
-                if remove_assignment_by_id(int(assignment_id)):
-                    flash("Asignación eliminada", "success")
-                else:
-                    flash("Error al eliminar asignación", "error")
+                try:
+                    aid = int(assignment_id)
+                    if remove_assignment_by_id(aid):
+                        flash("Asignación eliminada", "success")
+                    else:
+                        flash("Error al eliminar asignación", "error")
+                except ValueError:
+                     flash("ID de asignación inválido", "error")
 
         return redirect(url_for("admin.asignaciones_equipo"))
 
@@ -498,9 +503,21 @@ def asignaciones_equipo():
     managers = get_managers_for_assignments()
     members = get_members_for_assignments()
 
+    # Agrupar asignaciones por manager para el template
+    assignments_by_manager = {}
+    for a in asignaciones:
+        mgr = a["manager_username"]
+        if mgr not in assignments_by_manager:
+            assignments_by_manager[mgr] = {
+                "manager_rol": a.get("manager_rol", ""),
+                "members": []
+            }
+        assignments_by_manager[mgr]["members"].append(a)
+
     return render_template(
         "admin/asignaciones_equipo.html",
         asignaciones=asignaciones,
+        assignments_by_manager=assignments_by_manager,
         managers=managers,
         members=members
     )
@@ -632,6 +649,8 @@ def crear_linea_credito():
 
         # Crear nueva línea
         tasa_anual = float(request.form.get("tasa_anual", 25))
+        aval_raw = float(request.form.get("aval_porcentaje", 10))
+        aval_normalizado = aval_raw / 100 if aval_raw > 1 else aval_raw
 
         lineas[nombre] = {
             "descripcion": request.form.get("descripcion", ""),
@@ -641,7 +660,7 @@ def crear_linea_credito():
             "plazo_max": int(request.form.get("plazo_max", 36)),
             "tasa_mensual": float(request.form.get("tasa_mensual", 2.0)),
             "tasa_anual": tasa_anual,
-            "aval_porcentaje": float(request.form.get("aval_porcentaje", 0.10)),
+            "aval_porcentaje": aval_normalizado,
             "plazo_tipo": request.form.get("plazo_tipo", "meses"),
             "permite_desembolso_neto": request.form.get("permite_desembolso_neto") == "on",
             "desembolso_por_defecto": request.form.get("desembolso_por_defecto", "completo")
@@ -667,9 +686,6 @@ def crear_linea_credito():
     except Exception as e:
         traceback.print_exc()
         flash(f"Error al crear línea: {str(e)}", "error")
-
-    return redirect(url_for("admin.admin_panel") + "#TasasCredito")
-
 
     return redirect(url_for("admin.admin_panel") + "#TasasCredito")
 
@@ -716,6 +732,10 @@ def editar_linea_credito():
         if not linea_data and nombre in lineas:
              linea_data = lineas[nombre]
 
+        # Normalizar aval_porcentaje (frontend envía %, DB espera decimal)
+        aval_raw = float(request.form.get("aval_porcentaje", 10))
+        aval_normalizado = aval_raw / 100 if aval_raw > 1 else aval_raw
+
         # Actualizar datos
         linea_data.update({
             "descripcion": request.form.get("descripcion", ""),
@@ -725,7 +745,7 @@ def editar_linea_credito():
             "plazo_max": int(request.form.get("plazo_max", 36)),
             "tasa_mensual": float(request.form.get("tasa_mensual", 2.0)),
             "tasa_anual": float(request.form.get("tasa_anual", 25.0)),
-            "aval_porcentaje": float(request.form.get("aval_porcentaje", 0.10)),
+            "aval_porcentaje": aval_normalizado,
             "plazo_tipo": request.form.get("plazo_tipo", "meses"),
             "permite_desembolso_neto": request.form.get("permite_desembolso_neto") == "on",
             "desembolso_por_defecto": request.form.get("desembolso_por_defecto", "completo")

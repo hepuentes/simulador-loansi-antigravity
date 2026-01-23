@@ -2000,6 +2000,10 @@
                 // ✅ Usar tojson para conversión automática Python → JavaScript
                 window.scoringData = {{ scoring_json | tojson }
             };
+            } catch (e) {
+                console.error('Error parsing scoring data:', e);
+                window.scoringData = { criterios: {} };
+            }
 
             // CORRECCIÓN 2025-12-25: Ordenar criterios por campo 'orden' al cargar
             if (window.scoringData && window.scoringData.criterios) {
@@ -5922,15 +5926,15 @@
             }
 
             function inicializarAvalPorDefecto() {
-                if (!scoringData.niveles_riesgo) return;
+                if (typeof scoringData === 'undefined' || !scoringData || !scoringData.niveles_riesgo) return;
 
                 scoringData.niveles_riesgo.forEach((nivel, nivelIndex) => {
                     if (!nivel.aval_por_producto) {
                         nivel.aval_por_producto = {};
 
-                        Object.keys({{ lineas_credito| safe }
+                        Object.keys({{ lineas_credito | tojson | safe }
                 }).forEach(tipoCredito => {
-                    let avalDefecto = {{ lineas_credito| safe
+                    let avalDefecto = {{ lineas_credito | tojson | safe
                 }} [tipoCredito].aval_porcentaje;
 
             if (nivel.nombre === "Alto riesgo") {

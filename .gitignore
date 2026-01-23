@@ -5,3 +5,7 @@ __pycache__/
 .env
 *.log
 .DS_Store
+archive/
+*_fixed.*
+*_backup.*
+*_old.*

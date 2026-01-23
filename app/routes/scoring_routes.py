@@ -314,7 +314,7 @@ def calcular_scoring():
             }),
             # Agregar datos de resultado
             evaluacion=evaluacion,
-            resultado=evaluacion["resultado"],
+            scoring_result=evaluacion["resultado"],
             form_values=form_data  # Para mantener valores del formulario
         )
         

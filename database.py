@@ -466,6 +466,18 @@ def contar_registros_tabla(tabla):
     Returns:
         int: Número de registros
     """
+    # SEGURIDAD: Whitelist de tablas válidas para prevenir SQL injection
+    TABLAS_VALIDAS = {
+        'usuarios', 'lineas_credito', 'costos_asociados',
+        'configuracion_sistema', 'configuracion_scoring',
+        'evaluaciones', 'simulaciones', 'auditoria',
+        'user_assignments', 'permisos', 'rol_permisos', 'usuario_permisos'
+    }
+    
+    if tabla not in TABLAS_VALIDAS:
+        print(f"❌ Tabla no válida: {tabla}")
+        return 0
+    
     try:
         conn = conectar_db()
         cursor = conn.cursor()
