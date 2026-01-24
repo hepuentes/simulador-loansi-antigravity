@@ -1772,7 +1772,8 @@
 
             /// Función corregida para editar línea de crédito
             function editarLineaCredito(nombreLinea) {
-                const lineasCredito = {{ lineas_credito | tojson }};
+                const lineasCredito = {{ lineas_credito | tojson
+            }};
             const datos = lineasCredito[nombreLinea];
 
             if (datos) {
@@ -1997,7 +1998,8 @@
             // Intentar cargar datos del servidor usando tojson de Jinja2
             try {
                 // ✅ Usar tojson para conversión automática Python → JavaScript
-                window.scoringData = {{ scoring_json | tojson }};
+                window.scoringData = {{ scoring_json | tojson }
+            };
             } catch (e) {
                 console.error('Error parsing scoring data:', e);
                 window.scoringData = { criterios: {} };
@@ -2089,7 +2091,8 @@
             document.addEventListener('DOMContentLoaded', function () {
                 // Inicializar contadores de costos
                 {% for tipo_credito, costos in costos_asociados.items() %}
-                costosCounter['{{ tipo_credito }}'] = {{ costos | length }};
+                costosCounter['{{ tipo_credito }}'] = {{ costos | length }
+            };
             {% endfor %}
 
             // Configurar evento para cargar factores de rechazo
@@ -5929,8 +5932,10 @@
                     if (!nivel.aval_por_producto) {
                         nivel.aval_por_producto = {};
 
-                        Object.keys({{ lineas_credito | tojson | safe }}).forEach(tipoCredito => {
-                    let avalDefecto = {{ lineas_credito | tojson | safe }}[tipoCredito].aval_porcentaje;
+                        Object.keys({{ lineas_credito | tojson | safe }
+                }).forEach(tipoCredito => {
+                    let avalDefecto = {{ lineas_credito | tojson | safe
+                }} [tipoCredito].aval_porcentaje;
 
             if (nivel.nombre === "Alto riesgo") {
                 avalDefecto = avalDefecto * 1.5;
@@ -5958,7 +5963,8 @@
 
                 // 7.2 Inicializar contadores de costos
                 {% for tipo_credito, costos in costos_asociados.items() %}
-                costosCounter['{{ tipo_credito }}'] = {{ costos | length }};
+                costosCounter['{{ tipo_credito }}'] = {{ costos | length }
+            };
             {% endfor %}
 
             // 7.3 Inicializar tasas mensuales
@@ -6290,7 +6296,8 @@
         // Protección adicional: si se navega directamente al tab Permisos sin permiso
         document.addEventListener('DOMContentLoaded', function () {
             // Verificar si hay una variable de permiso disponible (agregar en el template si es necesario)
-            const tienePermisoPermisos = {{ 'true' if tiene_permiso('usr_permisos') else 'false' }};
+            const tienePermisoPermisos = {{ 'true' if tiene_permiso('usr_permisos') else 'false'
+        }};
 
         // Si el hash es #Permisos y no tiene permiso
         if (window.location.hash === '#Permisos' && !tienePermisoPermisos) {
