@@ -806,7 +806,7 @@ def limpiar_overrides_invalidos():
             JOIN permisos p ON up.permiso_id = p.id
             WHERE u.rol = 'admin'
             AND up.tipo = 'quitar'
-            AND p.codigo IN (?, ?, ?, ?, ?, ?)
+            AND p.codigo IN ({','.join(['?'] * len(PERMISOS_PROTEGIDOS_ADMIN))})
         """, tuple(PERMISOS_PROTEGIDOS_ADMIN))
 
         invalidos = cursor.fetchall()
@@ -1483,3 +1483,25 @@ if __name__ == "__main__":
         print("   Ejecuta primero: python migracion_permisos.py")
 
     conn.close()
+
+
+# ============================================================================
+# ALIASES DE COMPATIBILIDAD (para api_routes.py)
+# ============================================================================
+
+# Alias: api_routes.py importa con nombre diferente
+obtener_permisos_usuario_detallados = obtener_permisos_usuario_detalle
+limpiar_overrides_sin_efecto = limpiar_overrides_invalidos
+
+
+def obtener_permisos_protegidos():
+    """
+    Obtiene la lista de permisos protegidos para cada rol.
+    
+    Returns:
+        dict: Diccionario con roles como claves y listas de permisos protegidos
+    """
+    return {
+        "admin": list(PERMISOS_PROTEGIDOS_ADMIN),
+        "supersu": list(PERMISOS_PROTEGIDOS_ADMIN)
+    }

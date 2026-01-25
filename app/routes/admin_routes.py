@@ -514,6 +514,15 @@ def asignaciones_equipo():
             }
         assignments_by_manager[mgr]["members"].append(a)
 
+    # Ordenar por jerarquía de rol: gerente > supervisor > auditor
+    jerarquia_roles = {"gerente": 1, "supervisor": 2, "auditor": 3}
+    assignments_by_manager = dict(
+        sorted(
+            assignments_by_manager.items(),
+            key=lambda x: jerarquia_roles.get(x[1].get("manager_rol", ""), 99)
+        )
+    )
+
     return render_template(
         "admin/asignaciones_equipo.html",
         asignaciones=asignaciones,
@@ -662,9 +671,33 @@ def crear_linea_credito():
             "tasa_anual": tasa_anual,
             "aval_porcentaje": aval_normalizado,
             "plazo_tipo": request.form.get("plazo_tipo", "meses"),
-            "permite_desembolso_neto": request.form.get("permite_desembolso_neto") == "on",
+            "permite_desembolso_neto": request.form.get("permite_desembolso_neto") in ("on", "true"),
             "desembolso_por_defecto": request.form.get("desembolso_por_defecto", "completo")
         }
+
+        # Crear costos asociados iniciales
+        costos_iniciales = {}
+        costo_pagare = request.form.get("costo_pagare")
+        if costo_pagare:
+            costos_iniciales["Pagaré Digital"] = parse_currency_value(costo_pagare)
+        
+        costo_carta = request.form.get("costo_carta")
+        if costo_carta:
+            costos_iniciales["Carta de Instrucción"] = parse_currency_value(costo_carta)
+        
+        costo_datacredito = request.form.get("costo_datacredito")
+        if costo_datacredito:
+            costos_iniciales["Consulta Datacrédito"] = parse_currency_value(costo_datacredito)
+        
+        costo_custodia = request.form.get("costo_custodia")
+        if costo_custodia:
+            costos_iniciales["Custodia TVE"] = parse_currency_value(costo_custodia)
+
+        # Guardar costos asociados para la nueva línea
+        if costos_iniciales:
+            costos_asociados = config.get("COSTOS_ASOCIADOS", {})
+            costos_asociados[nombre] = costos_iniciales
+            config["COSTOS_ASOCIADOS"] = costos_asociados
 
         config["LINEAS_CREDITO"] = lineas
         guardar_configuracion(config)
@@ -747,7 +780,7 @@ def editar_linea_credito():
             "tasa_anual": float(request.form.get("tasa_anual", 25.0)),
             "aval_porcentaje": aval_normalizado,
             "plazo_tipo": request.form.get("plazo_tipo", "meses"),
-            "permite_desembolso_neto": request.form.get("permite_desembolso_neto") == "on",
+            "permite_desembolso_neto": request.form.get("permite_desembolso_neto") in ("on", "true"),
             "desembolso_por_defecto": request.form.get("desembolso_por_defecto", "completo")
         })
 
@@ -850,6 +883,71 @@ def guardar_costo():
 
     return redirect(url_for("admin.admin_panel") + "#CostosAsociados")
 
+
+@admin_bp.route("/costos/guardar-todos", methods=["POST"])
+@login_required
+@requiere_permiso("cfg_costos_editar")
+def guardar_todos_costos():
+    """Guardar todos los costos de una línea de crédito de una vez"""
+    import sys
+    from pathlib import Path
+    BASE_DIR = Path(__file__).parent.parent.parent.resolve()
+    if str(BASE_DIR) not in sys.path:
+        sys.path.insert(0, str(BASE_DIR))
+
+    from db_helpers import cargar_configuracion, guardar_configuracion
+    from ..utils.formatting import parse_currency_value
+
+    try:
+        linea_nombre = request.form.get("tipo_credito")
+        
+        if not linea_nombre:
+            flash("Línea no especificada", "error")
+            return redirect(url_for("admin.admin_panel") + "#CostosAsociados")
+
+        print(f"📝 [COSTOS] Guardando costos para línea: {linea_nombre}")
+
+        config = cargar_configuracion()
+        costos = config.get("COSTOS_ASOCIADOS", {})
+        lineas = config.get("LINEAS_CREDITO", {})
+        
+        # Reconstruir costos desde el formulario dinámicamente
+        nuevos_costos = {}
+        i = 0
+        while True:
+            nombre = request.form.get(f"nombre_costo_{i}")
+            valor = request.form.get(f"valor_costo_{i}")
+            if nombre is None:
+                break
+            if nombre.strip() and valor:
+                nuevos_costos[nombre.strip()] = parse_currency_value(valor)
+                print(f"   ✅ Costo: {nombre.strip()} = {parse_currency_value(valor)}")
+            i += 1
+        
+        costos[linea_nombre] = nuevos_costos
+        config["COSTOS_ASOCIADOS"] = costos
+        
+        # Actualizar aval si está presente
+        aval = request.form.get("aval_porcentaje")
+        if aval and linea_nombre in lineas:
+            try:
+                aval_valor = float(aval.replace(",", ".").replace("%", "").strip())
+                # Normalizar: si es mayor a 1, dividir por 100
+                aval_normalizado = aval_valor / 100 if aval_valor > 1 else aval_valor
+                lineas[linea_nombre]["aval_porcentaje"] = aval_normalizado
+                config["LINEAS_CREDITO"] = lineas
+                print(f"   ✅ Aval actualizado: {aval_valor}% -> {aval_normalizado}")
+            except ValueError:
+                print(f"   ⚠️ Error parseando aval: {aval}")
+        
+        guardar_configuracion(config)
+        flash(f"Costos de '{linea_nombre}' guardados correctamente ({len(nuevos_costos)} costos)", "success")
+
+    except Exception as e:
+        traceback.print_exc()
+        flash(f"Error al guardar costos: {str(e)}", "error")
+
+    return redirect(url_for("admin.admin_panel") + "#CostosAsociados")
 
 @admin_bp.route("/costos/eliminar", methods=["POST"])
 @login_required

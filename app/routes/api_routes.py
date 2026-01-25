@@ -806,16 +806,12 @@ def api_permisos_matriz():
     try:
         from permisos import obtener_matriz_permisos, obtener_todos_permisos
         
-        matriz = obtener_matriz_permisos()
-        permisos = obtener_todos_permisos()
-        roles = ["asesor", "supervisor", "gerente", "admin"]
+        datos = obtener_matriz_permisos()
         
-        return jsonify({
-            "success": True,
-            "matriz": matriz,
-            "permisos": permisos,
-            "roles": roles
-        })
+        response = {"success": True}
+        response.update(datos)
+        
+        return jsonify(response)
         
     except Exception as e:
         traceback.print_exc()
@@ -836,11 +832,13 @@ def api_permisos_protegidos():
     try:
         from permisos import obtener_permisos_protegidos
         
-        protegidos = obtener_permisos_protegidos()
+        protegidos_dict = obtener_permisos_protegidos()
+        # El frontend espera una lista plana, devolvemos los de admin por defecto
+        lista_protegidos = protegidos_dict.get('admin', [])
         
         return jsonify({
             "success": True,
-            "protegidos": protegidos
+            "permisos_protegidos": lista_protegidos
         })
         
     except Exception as e:
@@ -864,10 +862,11 @@ def api_permisos_usuario(user_id):
         
         permisos = obtener_permisos_usuario_detallados(user_id)
         
-        return jsonify({
-            "success": True,
-            "permisos": permisos
-        })
+        response = {"success": True}
+        if permisos:
+            response.update(permisos)
+            
+        return jsonify(response)
         
     except Exception as e:
         traceback.print_exc()

@@ -1772,8 +1772,7 @@
 
             /// Función corregida para editar línea de crédito
             function editarLineaCredito(nombreLinea) {
-                const lineasCredito = {{ lineas_credito | tojson
-            }};
+                const lineasCredito = {{ lineas_credito | tojson }};
             const datos = lineasCredito[nombreLinea];
 
             if (datos) {
@@ -1901,7 +1900,8 @@
             <h4 class="mb-4">Gestión de Costos Asociados</h4>
 
             <div class="row">
-                {% for tipo_credito, costos in costos_asociados.items() %}
+                {% for tipo_credito in lineas_credito.keys() %}
+                {% set costos = costos_asociados.get(tipo_credito, {}) %}
                 <div class="col-md-6 mb-4">
                     <div class="card">
                         <div class="card-header d-flex justify-content-between align-items-center">
@@ -1912,7 +1912,7 @@
                             </button>
                         </div>
                         <div class="card-body">
-                            <form id="form-costos-{{ tipo_credito }}" method="post" action="/admin/costos">
+                            <form id="form-costos-{{ tipo_credito }}" method="post" action="/admin/costos/guardar-todos">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                                 <input type="hidden" name="tipo_credito" value="{{ tipo_credito }}">
                                 <input type="hidden" name="current_tab" value="CostosAsociados">
@@ -1925,7 +1925,7 @@
                                             <input type="text" class="form-control nombre-costo" value="{{ costo }}"
                                                 name="nombre_costo_{{ loop.index0 }}" required>
                                             <span class="input-group-text">$</span>
-                                            <input type="text" name="valor_costo_{{ loop.index0 }}" value="{{ valor }}"
+                                            <input type="text" name="valor_costo_{{ loop.index0 }}" value="{{ '{:,.0f}'.format(valor|int).replace(',', '.') }}"
                                                 class="form-control valor-costo" oninput="formatNumber(this)" required>
                                             <button type="button" class="btn btn-outline-danger"
                                                 onclick="eliminarCosto(this)">
@@ -1998,8 +1998,7 @@
             // Intentar cargar datos del servidor usando tojson de Jinja2
             try {
                 // ✅ Usar tojson para conversión automática Python → JavaScript
-                window.scoringData = {{ scoring_json | tojson }
-            };
+                window.scoringData = {{ scoring_json | tojson }};
             } catch (e) {
                 console.error('Error parsing scoring data:', e);
                 window.scoringData = { criterios: {} };
@@ -2090,9 +2089,8 @@
             // Inicializar factores de rechazo cuando se carga la página
             document.addEventListener('DOMContentLoaded', function () {
                 // Inicializar contadores de costos
-                {% for tipo_credito, costos in costos_asociados.items() %}
-                costosCounter['{{ tipo_credito }}'] = {{ costos | length }
-            };
+                {% for tipo_credito in lineas_credito.keys() %}
+                costosCounter['{{ tipo_credito }}'] = {{ costos_asociados.get(tipo_credito, {}) | length }};
             {% endfor %}
 
             // Configurar evento para cargar factores de rechazo
@@ -2147,13 +2145,18 @@
             function eliminarCosto(boton) {
                 if (confirm('¿Está seguro de eliminar este costo?')) {
                     const costoRow = boton.closest('.costo-row');
-                    costoRow.remove();
-
-                    // Reordenar índices - con validación null-safe
+                    
+                    // Obtener referencias ANTES de eliminar el elemento
                     const form = boton.closest('form');
                     const tipoCreditoInput = form ? form.querySelector('input[name="tipo_credito"]') : null;
-                    if (tipoCreditoInput) {
-                        renumerarCostos(tipoCreditoInput.value);
+                    const tipoCredito = tipoCreditoInput ? tipoCreditoInput.value : null;
+                    
+                    // Ahora sí eliminar el elemento
+                    costoRow.remove();
+
+                    // Renumerar los índices de los costos restantes
+                    if (tipoCredito) {
+                        renumerarCostos(tipoCredito);
                     }
                 }
             }
@@ -2207,9 +2210,8 @@
                                     </tr>
                                 </thead>
                                 <tbody id="rangos-container">
-                                    {% if seguros_config is iterable and seguros_config is not string and seguros_config
-                                    is not mapping %}
-                                    {% for rango in seguros_config %}
+                                    {% if seguro_vida %}
+                                    {% for rango in seguro_vida %}
                                     <tr class="rango-row" data-index="{{ loop.index0 }}">
                                         <td>
                                             <input type="number" class="form-control" name="edad_min_{{ loop.index0 }}"
@@ -2318,7 +2320,7 @@
 
             <!-- Script para gestión dinámica de rangos -->
             <script>
-                let rangoCounter = {{ seguros_config| length if (seguros_config is iterable and seguros_config is not string and seguros_config is not mapping) else 3 }};
+                let rangoCounter = {{ seguro_vida | length if seguro_vida else 3 }};
 
                 function agregarRango() {
                     const container = document.getElementById('rangos-container');
@@ -2803,10 +2805,8 @@
                                                             <!-- CRITERIOS NORMALES: Mostrar min/max/puntos/descripción -->
                                                             {% for rango in criterio.rangos %}
                                                             <tr>
-                                                                <td class="align-middle"><strong>{{ rango.min
-                                                                        }}</strong></td>
-                                                                <td class="align-middle"><strong>{{ rango.max
-                                                                        }}</strong></td>
+                                                                <td class="align-middle"><strong>{{ rango.min }}</strong></td>
+                                                                <td class="align-middle"><strong>{{ rango.max }}</strong></td>
                                                                 <td class="align-middle">
                                                                     <span
                                                                         class="badge {% if rango.puntos >= 20 %}bg-success{% elif rango.puntos >= 10 %}bg-info{% elif rango.puntos >= 0 %}bg-secondary{% else %}bg-danger{% endif %}">
@@ -3695,14 +3695,30 @@
                 fetch('/api/permisos/matriz', { headers: { 'X-CSRFToken': getCSRFToken() } })
                     .then(function (r) { return r.json(); })
                     .then(function (data) {
-                        if (data.permisos) document.getElementById('totalPermisos').textContent = data.permisos.length;
+                        console.log('📊 Stats Permisos Data:', data);
+                        if (data.permisos) {
+                            var elTotal = document.getElementById('totalPermisos');
+                            if(elTotal) elTotal.textContent = data.permisos.length;
+                        }
                         if (data.matriz) {
-                            document.getElementById('permisosAsesor').textContent = Object.values(data.matriz.asesor || {}).filter(function (v) { return v; }).length;
-                            document.getElementById('permisosSupervisor').textContent = Object.values(data.matriz.supervisor || {}).filter(function (v) { return v; }).length;
-                            document.getElementById('permisosAuditor').textContent = Object.values(data.matriz.auditor || {}).filter(function (v) { return v; }).length;
-                            document.getElementById('permisosGerente').textContent = Object.values(data.matriz.gerente || {}).filter(function (v) { return v; }).length;
-                            document.getElementById('permisosAdminTecnico').textContent = Object.values(data.matriz.admin_tecnico || {}).filter(function (v) { return v; }).length;
-                            document.getElementById('permisosComite').textContent = Object.values(data.matriz.comite_credito || {}).filter(function (v) { return v; }).length;
+                            var roles = ['asesor', 'supervisor', 'auditor', 'gerente', 'admin_tecnico', 'comite_credito'];
+                            var mapIds = {
+                                'asesor': 'permisosAsesor',
+                                'supervisor': 'permisosSupervisor',
+                                'auditor': 'permisosAuditor',
+                                'gerente': 'permisosGerente',
+                                'admin_tecnico': 'permisosAdminTecnico',
+                                'comite_credito': 'permisosComite'
+                            };
+
+                            roles.forEach(function(rol) {
+                                var el = document.getElementById(mapIds[rol]);
+                                if (el) {
+                                    var count = Object.values(data.matriz[rol] || {}).filter(function (v) { return v === true; }).length;
+                                    console.log('Stat ' + rol + ': ' + count);
+                                    el.textContent = count;
+                                }
+                            });
                         }
                     }).catch(function (e) { console.error('Error cargando estadísticas:', e); });
             }
@@ -3883,8 +3899,8 @@
                         // Si está quitado, mostrar botón para restaurar
                         botones += '<button class="btn btn-outline-success btn-sm" onclick="restaurarPermiso(\'' + codigo + '\')" title="Restaurar permiso"><i class="bi bi-arrow-counterclockwise"></i> Restaurar</button>';
                     } else if (esAgregado) {
-                        // Si está agregado, mostrar botón para restaurar (quitar el agregado)
-                        botones += '<button class="btn btn-outline-secondary btn-sm" onclick="restaurarPermiso(\'' + codigo + '\')" title="Restaurar al valor del rol"><i class="bi bi-arrow-counterclockwise"></i> Restaurar</button>';
+                        // Si está agregado, mostrar botón para quitar (visualmente quitar, técnicamente restaurar al no-tener)
+                        botones += '<button class="btn btn-outline-danger btn-sm" onclick="restaurarPermiso(\'' + codigo + '\')" title="Eliminar asignación manual"><i class="bi bi-x-lg"></i> Quitar</button>';
                     } else if (esQuitadoSinEfecto) {
                         // Override inútil: se puede limpiar
                         botones += '<button class="btn btn-outline-warning btn-sm" onclick="restaurarPermiso(\'' + codigo + '\')" title="Limpiar override sin efecto"><i class="bi bi-broom"></i> Limpiar</button>';
@@ -4094,15 +4110,22 @@
 
             // Mostrar permisos protegidos (lista informativa)
             function mostrarPermisosProtegidos() {
+                console.log('🔒 Solicitando permisos protegidos...');
                 fetch('/api/permisos/protegidos', { headers: { 'X-CSRFToken': getCSRFToken() } })
                     .then(function (r) { return r.json(); })
                     .then(function (data) {
+                        console.log('🔒 Data protegidos:', data);
                         var lista = document.getElementById('listaPermisosProtegidos');
-                        if (!lista) return;
+                        if (!lista) {
+                            console.error('❌ Elemento listaPermisosProtegidos no encontrado');
+                            return;
+                        }
 
                         var items = data.permisos_protegidos || [];
+                        console.log('🔒 Items:', items.length);
+                        
                         if (!items.length) {
-                            lista.innerHTML = '<li class="list-group-item text-muted">No hay permisos protegidos.</li>';
+                            lista.innerHTML = '<li class="list-group-item text-muted">No hay permisos protegidos o no se pudieron cargar.</li>';
                         } else {
                             lista.innerHTML = items.map(function (c) {
                                 var desc = descripcionesPermisos[c] || c;
@@ -4113,8 +4136,13 @@
                             }).join('');
                         }
 
-                        var modal = new bootstrap.Modal(document.getElementById('permisosProtegidosModal'));
-                        modal.show();
+                        var modalEl = document.getElementById('permisosProtegidosModal');
+                        if(modalEl) {
+                            var modal = new bootstrap.Modal(modalEl);
+                            modal.show();
+                        } else {
+                            console.error('❌ Modal permisosProtegidosModal no encontrado');
+                        }
                     })
                     .catch(function (e) {
                         console.error('Error:', e);
@@ -5932,10 +5960,8 @@
                     if (!nivel.aval_por_producto) {
                         nivel.aval_por_producto = {};
 
-                        Object.keys({{ lineas_credito | tojson | safe }
-                }).forEach(tipoCredito => {
-                    let avalDefecto = {{ lineas_credito | tojson | safe
-                }} [tipoCredito].aval_porcentaje;
+                        Object.keys({{ lineas_credito | tojson | safe }}).forEach(tipoCredito => {
+                    let avalDefecto = {{ lineas_credito | tojson | safe }}[tipoCredito].aval_porcentaje;
 
             if (nivel.nombre === "Alto riesgo") {
                 avalDefecto = avalDefecto * 1.5;
@@ -5963,8 +5989,7 @@
 
                 // 7.2 Inicializar contadores de costos
                 {% for tipo_credito, costos in costos_asociados.items() %}
-                costosCounter['{{ tipo_credito }}'] = {{ costos | length }
-            };
+                costosCounter['{{ tipo_credito }}'] = {{ costos | length }};
             {% endfor %}
 
             // 7.3 Inicializar tasas mensuales
@@ -6296,8 +6321,7 @@
         // Protección adicional: si se navega directamente al tab Permisos sin permiso
         document.addEventListener('DOMContentLoaded', function () {
             // Verificar si hay una variable de permiso disponible (agregar en el template si es necesario)
-            const tienePermisoPermisos = {{ 'true' if tiene_permiso('usr_permisos') else 'false'
-        }};
+            const tienePermisoPermisos = {{ 'true' if tiene_permiso('usr_permisos') else 'false' }};
 
         // Si el hash es #Permisos y no tiene permiso
         if (window.location.hash === '#Permisos' && !tienePermisoPermisos) {
