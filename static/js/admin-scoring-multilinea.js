@@ -314,7 +314,7 @@ function renderNivelesRiesgoLinea(niveles) {
   niveles.forEach((nivel, index) => {
     html += `
             <div class="col-md-4 mb-3">
-                <div class="card h-100" style="border-top: 4px solid ${
+                <div class="card h-100" style="border: 2px solid ${
                   nivel.color
                 };">
                     <div class="card-header d-flex justify-content-between align-items-center" style="background-color: ${
