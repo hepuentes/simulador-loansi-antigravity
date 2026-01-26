@@ -1,25 +1,25 @@
 ---
 name: security-analyzer
-description: Analiza vulnerabilidades de seguridad en aplicaciones Flask incluyendo SQL injection, XSS, CSRF bypass, exposición de secretos y configuraciones inseguras. Usa para auditoría de seguridad. NO modifica código, solo REPORTA.
+description: Analiza vulnerabilidades de seguridad en aplicaciones Flask incluyendo SQL injection, XSS, CSRF bypass y configuraciones inseguras. Usa para auditoría de seguridad. SOLO reporta, NO modifica código.
 ---
 
 # Security Analyzer Skill
 
-## Cuándo se activa este skill
-- Usuario pide análisis de seguridad
-- Usuario dice "vulnerabilidades", "seguridad", "OWASP"
+## Cuándo se activa
+- Usuario dice: "seguridad", "vulnerabilidades", "OWASP", "analiza seguridad"
 - Antes de deploy a producción
-- Después de agregar autenticación o manejo de usuarios
+- Después de agregar autenticación
 
-## ROL IMPORTANTE
-Este skill SOLO analiza y reporta vulnerabilidades. NO hace modificaciones.
-Para corregir, el usuario debe usar el skill flask-developer.
+## Rol Importante
+Este skill SOLO detecta y reporta vulnerabilidades.
+NO hace correcciones automáticas.
+Para corregir, el usuario debe pedir al flask-developer.
 
-## OWASP Top 10 - Checklist para Flask
+## Análisis de Seguridad
 
 ### 1. SQL Injection
-Buscar queries inseguras:
 ```powershell
+# Buscar queries inseguras
 Select-String -Path "app\*.py" -Pattern "execute.*f[`"']" -Recurse
 Select-String -Path "app\*.py" -Pattern "execute.*\+" -Recurse
 Select-String -Path "app\*.py" -Pattern "execute.*%" -Recurse
@@ -27,85 +27,62 @@ Select-String -Path "app\*.py" -Pattern "execute.*%" -Recurse
 
 **Vulnerable:**
 ```python
-db.execute(f"SELECT * FROM users WHERE name = '{name}'")
-db.execute("SELECT * FROM users WHERE name = '" + name + "'")
+db.execute(f"SELECT * FROM users WHERE id = {user_id}")
 ```
 
 **Seguro:**
 ```python
-db.execute("SELECT * FROM users WHERE name = ?", (name,))
+db.execute("SELECT * FROM users WHERE id = ?", (user_id,))
 ```
 
 ### 2. Cross-Site Scripting (XSS)
-Buscar bypass de autoescape:
 ```powershell
+# Buscar bypass de autoescape
 Select-String -Path "templates\*.html" -Pattern "\|safe" -Recurse
 Select-String -Path "app\*.py" -Pattern "Markup\(" -Recurse
 ```
 
-**Regla:** Solo usar `|safe` con contenido 100% controlado, NUNCA con input de usuario.
+**Regla:** Solo usar `|safe` con contenido controlado, NUNCA con input de usuario.
 
-### 3. CSRF (Cross-Site Request Forgery)
-Verificar que todos los forms POST tienen token:
+### 3. CSRF Protection
 ```powershell
-# Buscar forms POST
+# Verificar forms POST tienen token
 Select-String -Path "templates\*.html" -Pattern "method=.POST" -Recurse
-
-# Verificar CSRF en cada uno
+# Comparar con
 Select-String -Path "templates\*.html" -Pattern "csrf_token" -Recurse
 ```
 
-**Cada form POST debe tener:**
-```html
-<form method="POST">
-    {{ form.csrf_token }}
-    <!-- o -->
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-```
-
-### 4. Exposición de Secretos
+### 4. Secretos Expuestos
 ```powershell
-Select-String -Path "app\*.py" -Pattern "SECRET_KEY.*=.*[`"']" -Recurse
+Select-String -Path "*.py" -Pattern "SECRET_KEY.*=.*[`"'][^`"']+[`"']" -Recurse
 Select-String -Path "*.py" -Pattern "PASSWORD.*=.*[`"']" -Recurse
 ```
 
-**Vulnerable:**
-```python
-app.config['SECRET_KEY'] = 'mi-clave-secreta-123'
-```
-
-**Seguro:**
-```python
-import os
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-only-key')
-```
-
-### 5. Debug Mode en Producción
+### 5. Debug Mode
 ```powershell
-Select-String -Path "app\*.py" -Pattern "debug.*=.*True" -Recurse
-Select-String -Path "*.py" -Pattern "DEBUG.*=.*True" -Recurse
+Select-String -Path "*.py" -Pattern "debug.*=.*True" -Recurse
 ```
 
 ## Formato de Reporte de Seguridad
 
 ```
-═══════════════════════════════════════════════════════════
-              REPORTE DE SEGURIDAD - LOANSI
-═══════════════════════════════════════════════════════════
+═══════════════════════════════════════════════════════
+           REPORTE DE SEGURIDAD - LOANSI
+═══════════════════════════════════════════════════════
 
-🛡️ RESUMEN DE SEGURIDAD
+🛡️ RESUMEN
 - Vulnerabilidades CRÍTICAS: X
 - Vulnerabilidades ALTAS: X
 - Vulnerabilidades MEDIAS: X
-- Configuraciones inseguras: X
 
-═══════════════════════════════════════════════════════════
-                 VULNERABILIDADES CRÍTICAS
-═══════════════════════════════════════════════════════════
+═══════════════════════════════════════════════════════
+              VULNERABILIDADES CRÍTICAS
+═══════════════════════════════════════════════════════
 
 🔴 VULNERABILIDAD: SQL Injection
 📍 UBICACIÓN: app/routes/admin_routes.py:47
-⚠️  RIESGO: Un atacante puede ejecutar queries arbitrarios en la base de datos
+⚠️  RIESGO: Atacante puede ejecutar queries arbitrarios
+
 📝 CÓDIGO VULNERABLE:
     cursor.execute(f"SELECT * FROM usuarios WHERE id = {user_id}")
 
@@ -113,44 +90,27 @@ Select-String -Path "*.py" -Pattern "DEBUG.*=.*True" -Recurse
     cursor.execute("SELECT * FROM usuarios WHERE id = ?", (user_id,))
 
 ✅ VERIFICACIÓN:
-    1. Buscar el archivo y línea
-    2. Confirmar que usa parámetros (?)
-    3. No debe haber f-strings ni concatenación en queries
+    Select-String -Path "app\routes\admin_routes.py" -Pattern "execute.*\?"
 
-═══════════════════════════════════════════════════════════
-                    CSRF PROTECTION
-═══════════════════════════════════════════════════════════
+═══════════════════════════════════════════════════════
+                  CSRF PROTECTION
+═══════════════════════════════════════════════════════
 
 | Template | Tiene CSRF | Estado |
 |----------|------------|--------|
 | login.html | ✅ SÍ | OK |
 | admin.html | ❌ NO | VULNERABLE |
 
-═══════════════════════════════════════════════════════════
-                 CONFIGURACIÓN DE SEGURIDAD
-═══════════════════════════════════════════════════════════
+═══════════════════════════════════════════════════════
+                   SIGUIENTE PASO
+═══════════════════════════════════════════════════════
 
-| Setting | Estado | Recomendación |
-|---------|--------|---------------|
-| SECRET_KEY | ⚠️ Hardcoded | Usar variable de entorno |
-| DEBUG | ✅ False | OK |
-| CSRF_ENABLED | ✅ True | OK |
-
-═══════════════════════════════════════════════════════════
-                    SIGUIENTE PASO
-═══════════════════════════════════════════════════════════
-
-Para corregir las vulnerabilidades encontradas:
+Para corregir, decir:
 "Corrige la vulnerabilidad de SQL Injection en admin_routes.py:47"
-
-El skill flask-developer aplicará las correcciones.
 ```
 
 ## Restricciones
-
 - NO modificar ningún archivo
-- NO ejecutar correcciones automáticamente
-- SOLO analizar y reportar
-- Proveer ubicación EXACTA
+- SOLO detectar y reportar
+- Clasificar por severidad OWASP
 - Proveer código de remediación COPIABLE
-- Clasificar por severidad según OWASP

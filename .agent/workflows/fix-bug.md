@@ -1,65 +1,50 @@
 ---
-description: Flujo completo para corregir un bug con verificación paso a paso
----
-
----
 name: fix-bug
-description: Flujo completo para corregir un bug con verificación paso a paso
+description: Flujo paso a paso para corregir un bug con verificación
 ---
 
 # Workflow: Corregir Bug
 
-## Paso 1: Entender el Bug
-Antes de tocar código, responder:
-- ¿Cuál es el comportamiento actual?
-- ¿Cuál es el comportamiento esperado?
-- ¿Cómo se reproduce?
-- ¿En qué archivo/línea está el problema?
+## Paso 1: Entender el Problema
+Antes de tocar código:
+- ¿Qué debería pasar?
+- ¿Qué está pasando?
+- ¿En qué archivo está el problema?
 
 ## Paso 2: Localizar el Código
 ```powershell
-# Buscar archivos relacionados
+# Buscar texto relacionado
 Select-String -Path "app\*.py" -Pattern "texto_relacionado" -Recurse
 Select-String -Path "templates\*.html" -Pattern "texto_relacionado" -Recurse
+Select-String -Path "static\js\*.js" -Pattern "texto_relacionado" -Recurse
 ```
 
 ## Paso 3: Leer el Archivo
-Antes de modificar, leer el archivo completo para entender el contexto.
+Leer el archivo completo antes de modificar.
 
 ## Paso 4: Aplicar el Fix
-- Modificar SOLO lo necesario
-- NO cambiar código no relacionado
-- Mantener el estilo existente
+Modificar SOLO lo necesario.
 
-## Paso 5: Verificar Sintaxis
+## Paso 5: Verificar Sintaxis (si es Python)
 ```powershell
-python -m py_compile archivo_modificado.py
+python -m py_compile archivo.py
 ```
-Si hay error, corregir antes de continuar.
 
-## Paso 6: Verificar que el Cambio se Guardó
+## Paso 6: Verificar que se Guardó
 ```powershell
-Get-Content "archivo_modificado.py" | Select-String "codigo_nuevo"
+Get-Content "archivo" | Select-String "codigo_nuevo"
 ```
-Si no aparece, el cambio NO se guardó.
 
-## Paso 7: Probar
-```powershell
-python run.py
-```
-Verificar que el servidor arranca sin errores.
-
-## Paso 8: Reportar
-Solo cuando TODO esté verificado:
+## Paso 7: Instrucciones para el Usuario
 ```
 ## Bug Corregido
 
-📍 Archivo: ruta/archivo.py:línea
-📝 Problema: [descripción]
-🔧 Solución: [qué se cambió]
+📍 Archivo: ruta/archivo
+📝 Cambio: descripción
 
-### Verificaciones:
-✅ Sintaxis OK
-✅ Servidor arranca
-✅ Cambio guardado en archivo
+### Para probar:
+1. Detener servidor: Ctrl+C
+2. Iniciar servidor: python run.py
+3. Abrir: http://127.0.0.1:5000/ruta
+4. Refrescar: Ctrl+Shift+R
 ```

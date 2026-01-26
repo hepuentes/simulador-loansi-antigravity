@@ -1,11 +1,18 @@
-# Configuración de Agentes AI - Proyecto LOANSI
+# Configuración de Agentes - Proyecto LOANSI
 
 ## Información del Proyecto
 - **Nombre**: Simulador LOANSI
+- **Ubicación**: C:\Users\Admin\loansi antig\simulador-loansi-antigravity
 - **Stack**: Python 3.10, Flask 3.x, Flask-WTF, SQLite
 - **Frontend**: Bootstrap 5.3.2 (CDN)
 - **Sistema**: Windows 11
-- **IDE**: Google Antigravity Desktop
+- **Antigravity**: 1.15.8
+
+## Entorno de Ejecución
+- NO se usa entorno virtual (venv)
+- Python se ejecuta directamente: `python run.py`
+- Las dependencias están instaladas globalmente
+- Terminal: PowerShell integrado de Antigravity
 
 ## Credenciales de Prueba
 ```
@@ -14,84 +21,68 @@ Usuario: hpsupersu
 Contraseña: loanaP25@
 ```
 
-## Skills Disponibles (se activan automáticamente)
+## Skills Disponibles
 
-| Skill | Función | Cuándo se activa |
-|-------|---------|------------------|
-| **flask-developer** | Corrige bugs, crea código | "corrige", "arregla", "crea", "modifica" |
-| **code-auditor** | Revisa calidad de código | "revisa", "audita", "analiza" |
-| **security-analyzer** | Detecta vulnerabilidades | "seguridad", "vulnerabilidades" |
-| **qa-tester** | Prueba y verifica | "prueba", "test", "verifica" |
+| Skill | Función | Palabras que lo activan |
+|-------|---------|-------------------------|
+| flask-developer | Crear y corregir código | "corrige", "arregla", "modifica", "crea", "cambia" |
+| code-auditor | Revisar calidad | "revisa", "audita", "analiza código" |
+| security-analyzer | Detectar vulnerabilidades | "seguridad", "vulnerabilidades", "OWASP" |
 
-## Workflows Disponibles (activar con /nombre)
+## Workflows Disponibles
 
 | Comando | Función |
 |---------|---------|
-| `/fix-bug` | Flujo completo para corregir un bug |
-| `/run-tests` | Ejecutar pruebas del sistema |
+| /fix-bug | Corregir un bug paso a paso |
+| /verify | Verificar que cambios se aplicaron |
 
-## Flujo de Trabajo Recomendado
+## Reglas Críticas para el Agente
 
-### Para corregir un bug:
-1. Describe el problema al agente (se activa flask-developer)
-2. El agente propone solución y la aplica
-3. Pide verificación (se activa qa-tester)
-4. El agente prueba y reporta
+### Sobre Cambios de Código
+1. SIEMPRE leer el archivo ANTES de modificarlo
+2. SIEMPRE verificar que el cambio se guardó DESPUÉS
+3. NUNCA decir "listo" sin haber verificado
+4. Si hay errores, corregirlos sin preguntar
 
-### Para auditoría:
-1. Pide revisar el código (se activa code-auditor)
-2. El agente genera reporte con problemas
-3. Para cada problema, pide corrección (se activa flask-developer)
+### Sobre Verificación de Cambios
+Después de modificar un archivo, OBLIGATORIO ejecutar:
+```powershell
+Get-Content "ruta/archivo" | Select-String "texto_nuevo"
+```
+Si el texto NO aparece, el cambio NO se guardó.
 
-### Para seguridad:
-1. Pide análisis de seguridad (se activa security-analyzer)
-2. El agente reporta vulnerabilidades
-3. Para cada una, pide corrección (se activa flask-developer)
+### Sobre el Servidor Flask
+- Iniciar: `python run.py`
+- Detener: Ctrl+C en la terminal
+- NO intentar abrir navegador automáticamente
+- El usuario probará manualmente en http://127.0.0.1:5000
 
-## Separación de Roles
+### Sobre Dependencias
+- NO activar venv (no existe)
+- Si falta un paquete: `pip install nombre-paquete`
+- Verificar con: `pip show nombre-paquete`
 
-| Skill | Puede hacer | NO puede hacer |
-|-------|-------------|----------------|
-| flask-developer | Modificar código | - |
-| code-auditor | Analizar y reportar | Modificar código |
-| security-analyzer | Detectar vulnerabilidades | Modificar código |
-| qa-tester | Probar y reportar | Modificar código |
-
-## Estructura de Archivos
+## Estructura del Proyecto
 ```
 simulador-loansi-antigravity/
-├── run.py                      # Punto de entrada
+├── .agent/
+│   ├── rules/
+│   │   └── flask-project.md
+│   ├── skills/
+│   │   ├── flask-developer/SKILL.md
+│   │   ├── code-auditor/SKILL.md
+│   │   └── security-analyzer/SKILL.md
+│   └── workflows/
+│       ├── fix-bug.md
+│       └── verify.md
 ├── app/
-│   ├── __init__.py            # App factory
-│   ├── config.py              # Configuración
-│   ├── routes/                # Blueprints
-│   │   ├── admin_routes.py
-│   │   ├── asesor_routes.py
-│   │   ├── auth.py            # Login/logout
-│   │   └── ...
-│   ├── services/
-│   └── utils/
+│   ├── __init__.py
+│   ├── routes/
+│   └── services/
 ├── templates/
-│   ├── admin/
-│   │   └── admin.html
-│   ├── asesor/
-│   ├── cliente/
-│   ├── dashboards/
-│   └── login.html             # Página de login
 ├── static/
-│   ├── css/
-│   └── js/
-└── .agent/
-    ├── rules/
-    │   ├── flask-development.md
-    │   ├── file-management.md
-    │   ├── security-standards.md
-    │   └── test-credentials.md    # Credenciales
-    └── workflows/
-        ├── developer.md
-        ├── auditor.md
-        ├── security.md
-        └── qa-tester.md           # Login automático
+├── run.py
+└── requirements.txt
 ```
 
 ## Patrones de Código Obligatorios
@@ -100,10 +91,18 @@ simulador-loansi-antigravity/
 ```html
 <form method="POST">
     {{ form.csrf_token }}
+    <!-- o -->
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
 </form>
 ```
 
 ### SQL seguro
 ```python
 cursor.execute("SELECT * FROM tabla WHERE id = ?", (valor,))
+```
+
+### Imports en rutas Flask
+```python
+from flask import Blueprint, render_template, flash, redirect, url_for, request
+from flask_wtf import FlaskForm
 ```

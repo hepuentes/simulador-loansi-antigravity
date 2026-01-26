@@ -1,58 +1,37 @@
----
-trigger: always_on
----
+# Reglas del Proyecto Flask LOANSI
 
-# Reglas del Proyecto Flask LOANSI - SIEMPRE ACTIVAS
+## Stack Técnico
+- Python 3.10 (instalación global, SIN venv)
+- Flask 3.x con Flask-WTF
+- SQLite como base de datos
+- Bootstrap 5.3.2 (CDN)
+- Windows 11 con PowerShell
 
-## Información del Proyecto
-- Nombre: Simulador LOANSI
-- Stack: Python 3.10, Flask 3.x, Flask-WTF, SQLite
-- Frontend: Bootstrap 5.3.2 (CDN)
-- Sistema: Windows 11
-- Despliegue: PythonAnywhere
+## Comandos de Terminal (Windows PowerShell)
 
-## Credenciales de Prueba (Solo Desarrollo Local)
-```
-URL: http://127.0.0.1:5000/login
-Usuario: hpsupersu
-Contraseña: loanaP25@
+### Ejecutar servidor
+```powershell
+python run.py
 ```
 
-## Estructura del Proyecto
+### Verificar sintaxis Python
+```powershell
+python -m py_compile archivo.py
 ```
-simulador-loansi-antigravity/
-├── run.py                      # Punto de entrada
-├── app/
-│   ├── __init__.py            # App factory
-│   ├── config.py              # Configuración
-│   ├── routes/                # Blueprints
-│   │   ├── admin_routes.py
-│   │   ├── asesor_routes.py
-│   │   ├── auth.py            # Login/logout
-│   │   └── ...
-│   ├── services/
-│   └── utils/
-├── templates/
-│   ├── admin/
-│   │   └── admin.html
-│   ├── asesor/
-│   ├── cliente/
-│   ├── dashboards/
-│   └── login.html             # Página de login
-├── static/
-│   ├── css/
-│   └── js/
-└── .agent/
-    ├── rules/
-    │   ├── flask-development.md
-    │   ├── file-management.md
-    │   ├── security-standards.md
-    │   └── test-credentials.md    # Credenciales
-    └── workflows/
-        ├── developer.md
-        ├── auditor.md
-        ├── security.md
-        └── qa-tester.md           # Login automático
+
+### Instalar dependencia (si falta)
+```powershell
+pip install nombre-paquete
+```
+
+### Verificar que un cambio se guardó
+```powershell
+Get-Content "ruta/archivo.py" | Select-String "texto_esperado"
+```
+
+### Ver contenido de archivo
+```powershell
+Get-Content "ruta/archivo.py"
 ```
 
 ## Reglas de Código OBLIGATORIAS
@@ -61,8 +40,6 @@ simulador-loansi-antigravity/
 ```html
 <form method="POST">
     {{ form.csrf_token }}
-    <!-- o -->
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
 </form>
 ```
 
@@ -71,7 +48,7 @@ simulador-loansi-antigravity/
 # CORRECTO
 cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
 
-# PROHIBIDO - SQL Injection
+# PROHIBIDO
 cursor.execute(f"SELECT * FROM users WHERE id = {user_id}")
 ```
 
@@ -83,42 +60,43 @@ cursor.execute(f"SELECT * FROM users WHERE id = {user_id}")
 {% endblock %}
 ```
 
-## Prevención de Duplicados de Archivos
+## Estructura de Archivos Importantes
 
-### Antes de editar CUALQUIER archivo:
-1. Verificar que es el archivo correcto
-2. Buscar si hay duplicados con nombres similares
-3. Confirmar cuál usa render_template() en las rutas
+| Archivo | Propósito |
+|---------|-----------|
+| run.py | Punto de entrada de la aplicación |
+| app/__init__.py | Factory de la aplicación Flask |
+| app/routes/ | Blueprints con las rutas |
+| templates/ | Plantillas HTML (Jinja2) |
+| static/js/ | JavaScript del frontend |
+| static/css/ | Estilos CSS |
+
+## Prevención de Errores
+
+### Antes de modificar un archivo:
+1. Leer el archivo completo
+2. Identificar la sección exacta a modificar
+3. Verificar que no hay otros archivos con nombres similares
+
+### Después de modificar:
+1. Ejecutar verificación de sintaxis
+2. Confirmar que el cambio se guardó (Get-Content)
+3. Si es Python, verificar que no hay errores de import
 
 ### Archivos a NUNCA modificar:
-- Cualquier archivo con sufijo: _fixed, _backup, _old, _bak
+- Archivos con sufijo _backup, _old, _fixed
 - Archivos en carpeta /archive/
-- Archivos .pyc, __pycache__/
+- Archivos __pycache__/
 
-## Verificación de Cambios (Windows PowerShell)
-
-### Después de CADA modificación:
-```powershell
-# Verificar sintaxis
-python -m py_compile archivo_modificado.py
-
-# Verificar que el cambio se guardó
-Get-Content "ruta/archivo" | Select-String "contenido_nuevo"
-
-# Verificar que servidor arranca
-python -c "from app import create_app; create_app()"
+## Credenciales de Prueba
+```
+URL: http://127.0.0.1:5000/login
+Usuario: hpsupersu
+Contraseña: loanaP25@
 ```
 
-## Comportamiento del Agente
-
-### OBLIGATORIO:
-- Si falta información: PREGUNTAR, no asumir
-- Si un archivo no existe: REPORTAR, no inventar
-- Si una importación falla: VERIFICAR requirements.txt
-- Nunca modificar archivos fuera del proyecto
-
-### Antes de reportar "tarea completada":
-1. Verificar que el archivo se modificó realmente
-2. Ejecutar verificación de sintaxis
-3. Si hay tests relacionados, ejecutarlos
-4. Solo entonces reportar como completado
+## Navegador y Pruebas
+- El navegador integrado de Antigravity NO funciona en v1.15.8
+- Las pruebas de UI se hacen manualmente
+- El agente puede probar endpoints con Invoke-WebRequest en PowerShell
+- El usuario abre http://127.0.0.1:5000 en su navegador normal

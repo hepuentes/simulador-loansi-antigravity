@@ -1,122 +1,148 @@
 ---
 name: flask-developer
-description: Desarrolla y corrige código Python Flask con Flask-WTF, SQLite y Jinja2. Usa cuando el usuario pida crear endpoints, corregir bugs, modificar templates, o trabajar con formularios. VERIFICA que los cambios se apliquen realmente antes de reportar.
+description: Desarrolla y corrige código Python Flask. Usa cuando el usuario pida crear endpoints, corregir bugs, modificar templates, trabajar con formularios, cambiar estilos CSS, o modificar JavaScript. SIEMPRE verifica que los cambios se aplicaron antes de reportar.
 ---
 
 # Flask Developer Skill
 
-## Cuándo se activa este skill
-- Usuario pide crear o modificar rutas/endpoints Flask
-- Usuario reporta errores en formularios o CSRF
-- Usuario necesita queries SQLite
-- Usuario pide modificar templates Jinja2
-- Hay errores 400, 403, 404, 500 en la aplicación
-- Usuario dice "corrige", "arregla", "fix", "bug"
+## Cuándo se activa
+- Usuario dice: "corrige", "arregla", "modifica", "crea", "cambia", "agrega", "elimina"
+- Errores 400, 403, 404, 500 en la aplicación
+- Cambios en templates HTML, CSS, JavaScript
+- Cambios en rutas Flask o lógica Python
 
-## PROTOCOLO ANTI-ALUCINACIÓN (OBLIGATORIO)
+## Entorno de Trabajo
+- Windows 11 con PowerShell
+- Python 3.10 instalado globalmente (SIN venv)
+- Flask 3.x con Flask-WTF
+- Servidor: `python run.py` en puerto 5000
 
-### Antes de modificar cualquier archivo:
-1. LEER el archivo completo primero
-2. IDENTIFICAR la línea exacta del problema
-3. PLANIFICAR el cambio mínimo necesario
+## PROTOCOLO OBLIGATORIO
 
-### Después de cada modificación:
-1. RELEER el archivo para confirmar que el cambio se guardó
-2. EJECUTAR verificación de sintaxis:
+### ANTES de modificar:
+1. LEER el archivo completo para entender el contexto
+2. IDENTIFICAR la línea o sección exacta a cambiar
+3. VERIFICAR que no hay archivos duplicados con nombres similares
+
+### DESPUÉS de modificar:
+1. VERIFICAR que el cambio se guardó:
 ```powershell
-python -m py_compile archivo_modificado.py
+Get-Content "ruta/archivo" | Select-String "codigo_nuevo"
 ```
-3. Si hay error de sintaxis, CORREGIR antes de continuar
 
-### Antes de reportar "completado":
-1. Verificar que el archivo cambió realmente
-2. Ejecutar el servidor de prueba:
+2. Si es archivo Python, verificar sintaxis:
 ```powershell
-python run.py
+python -m py_compile ruta/archivo.py
 ```
-3. Si hay error al iniciar, NO reportar como completado
+
+3. Si hay error, CORREGIR inmediatamente
+
+### ANTES de decir "listo":
+- Confirmar que Get-Content muestra el código nuevo
+- Confirmar que py_compile no dio errores
+- Si modificaste varios archivos, verificar TODOS
 
 ## Patrones de Código Flask
 
-### Ruta con Formulario (Flask-WTF)
+### Ruta con Formulario
 ```python
 from flask import Blueprint, render_template, flash, redirect, url_for
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField
 from wtforms.validators import DataRequired
 
-bp = Blueprint('main', __name__)
-
-class MiForm(FlaskForm):
-    nombre = StringField('Nombre', validators=[DataRequired()])
-    submit = SubmitField('Enviar')
+bp = Blueprint('nombre', __name__)
 
 @bp.route('/ruta', methods=['GET', 'POST'])
 def mi_funcion():
     form = MiForm()
     if form.validate_on_submit():
-        # Procesar datos
-        flash('Operación exitosa', 'success')
-        return redirect(url_for('main.mi_funcion'))
+        # Procesar
+        flash('Éxito', 'success')
+        return redirect(url_for('nombre.mi_funcion'))
     return render_template('template.html', form=form)
 ```
 
-### Template con CSRF
+### Template con CSRF y Bootstrap
 ```html
 {% extends 'base.html' %}
 {% block content %}
-<form method="POST">
-    {{ form.csrf_token }}
-    {{ form.nombre.label }} {{ form.nombre(class="form-control") }}
-    {% for error in form.nombre.errors %}
-        <span class="text-danger">{{ error }}</span>
-    {% endfor %}
-    {{ form.submit(class="btn btn-primary") }}
-</form>
+<div class="container">
+    <form method="POST">
+        {{ form.csrf_token }}
+        <div class="mb-3">
+            {{ form.campo.label(class="form-label") }}
+            {{ form.campo(class="form-control") }}
+        </div>
+        <button type="submit" class="btn btn-primary">Enviar</button>
+    </form>
+</div>
 {% endblock %}
 ```
 
 ### Query SQLite Segura
 ```python
-def get_user(user_id):
+def get_item(item_id):
     db = get_db()
-    user = db.execute(
-        "SELECT * FROM users WHERE id = ?", 
-        (user_id,)
+    return db.execute(
+        "SELECT * FROM items WHERE id = ?", 
+        (item_id,)
     ).fetchone()
-    return user
+```
 
-def insert_user(nombre, email):
-    db = get_db()
-    db.execute(
-        "INSERT INTO users (nombre, email) VALUES (?, ?)",
-        (nombre, email)
-    )
-    db.commit()
+### JavaScript en archivo separado
+```javascript
+// static/js/mi-script.js
+document.addEventListener('DOMContentLoaded', function() {
+    // código aquí
+});
+```
+
+## Modificación de Estilos CSS
+
+### En archivo CSS:
+```css
+/* static/css/custom.css */
+.mi-clase {
+    border: 2px solid #color;
+    background-color: #color;
+}
+```
+
+### Inline en template (evitar si es posible):
+```html
+<div style="border: 2px solid {{ nivel.color }};">
+```
+
+### En JavaScript dinámico:
+```javascript
+element.style.border = `2px solid ${color}`;
+element.style.borderColor = color;
 ```
 
 ## Formato de Reporte al Completar
 
 ```
-## Cambios Realizados
+## Cambio Realizado
 
-📍 ARCHIVO: ruta/al/archivo.py
-📝 CAMBIO: Descripción breve del cambio
-🔧 LÍNEAS: XX-YY
-
-### Código modificado:
-[mostrar el código nuevo]
+📍 ARCHIVO: ruta/completa/archivo.ext
+📝 CAMBIO: Descripción breve
+🔧 LÍNEAS: XX-YY (aproximado)
 
 ### Verificación:
-✅ Sintaxis verificada: python -m py_compile OK
-✅ Servidor inicia: python run.py OK
-✅ Cambio confirmado en archivo: SÍ
+✅ Sintaxis: OK (python -m py_compile)
+✅ Contenido guardado: OK (Get-Content confirmó)
+
+### Para probar:
+1. Detener servidor si está corriendo (Ctrl+C)
+2. Iniciar servidor: python run.py
+3. Abrir en navegador: http://127.0.0.1:5000/ruta
+4. Refrescar con Ctrl+Shift+R (limpiar caché)
 ```
 
-## Si el Error Persiste Después del Fix
+## Si el Cambio NO se Aplica
 
-1. Verificar que guardaste el archivo correcto (ruta completa)
-2. Verificar que Flask recargó (modo debug muestra "Restarting")
-3. Limpiar caché del navegador (Ctrl+Shift+R)
-4. Revisar logs de Flask en terminal
-5. Si nada funciona: REPORTAR el problema, no inventar solución
+1. Verificar que hiciste clic en "Accept All" en Antigravity
+2. Verificar con Get-Content que el archivo tiene el código nuevo
+3. Si no lo tiene, volver a aplicar el cambio
+4. Si sigue sin aplicarse, reportar el problema
