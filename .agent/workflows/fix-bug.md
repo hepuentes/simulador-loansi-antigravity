@@ -1,50 +1,18 @@
 ---
-name: fix-bug
-description: Flujo paso a paso para corregir un bug con verificación
+description: Flujo de trabajo estructurado para la corrección de errores, asegurando la Verificación Determinista Obligatoria (VDO).
 ---
 
-# Workflow: Corregir Bug
+## Flujo de Trabajo: Corregir un Error (/fix-bug)
 
-## Paso 1: Entender el Problema
-Antes de tocar código:
-- ¿Qué debería pasar?
-- ¿Qué está pasando?
-- ¿En qué archivo está el problema?
+**Descripción:** Flujo de trabajo estructurado para la corrección de errores, asegurando la Verificación Determinista Obligatoria (VDO).
 
-## Paso 2: Localizar el Código
-```powershell
-# Buscar texto relacionado
-Select-String -Path "app\*.py" -Pattern "texto_relacionado" -Recurse
-Select-String -Path "templates\*.html" -Pattern "texto_relacionado" -Recurse
-Select-String -Path "static\js\*.js" -Pattern "texto_relacionado" -Recurse
-```
+**Pasos:**
 
-## Paso 3: Leer el Archivo
-Leer el archivo completo antes de modificar.
-
-## Paso 4: Aplicar el Fix
-Modificar SOLO lo necesario.
-
-## Paso 5: Verificar Sintaxis (si es Python)
-```powershell
-python -m py_compile archivo.py
-```
-
-## Paso 6: Verificar que se Guardó
-```powershell
-Get-Content "archivo" | Select-String "codigo_nuevo"
-```
-
-## Paso 7: Instrucciones para el Usuario
-```
-## Bug Corregido
-
-📍 Archivo: ruta/archivo
-📝 Cambio: descripción
-
-### Para probar:
-1. Detener servidor: Ctrl+C
-2. Iniciar servidor: python run.py
-3. Abrir: http://127.0.0.1:5000/ruta
-4. Refrescar: Ctrl+Shift+R
-```
+1.  **Análisis:** Analiza el error reportado y el código fuente. Determina la línea o bloque de código que necesita ser modificado.
+2.  **Plan de Corrección:** Genera un plan de acción detallado, especificando el archivo (`<ruta_del_archivo>`), el cambio exacto a realizar y el **`<snippet_de_codigo_nuevo>`** para la verificación.
+3.  **Ejecución:** Aplica el cambio al archivo.
+4.  **Verificación:** **MANDATORIAMENTE**, invoca el flujo de trabajo de verificación:
+    ```
+    /verify <ruta_del_archivo> "<snippet_de_codigo_nuevo>"
+    ```
+5.  **Reporte:** Si `/verify` es exitoso, reporta la corrección del error, incluyendo la salida de la verificación. Si falla, regresa al paso 1.

@@ -37,7 +37,7 @@ document.addEventListener("DOMContentLoaded", function () {
  */
 async function initSelectorLineaCredito() {
   console.log("🔄 Cargando líneas de crédito para scoring...");
-  
+
   try {
     const response = await fetch("/api/scoring/lineas-credito", {
       method: "GET",
@@ -92,21 +92,18 @@ function renderSelectorLinea(lineas) {
                                 onchange="onCambioLineaCredito(this.value)">
                             <option value="">-- Seleccione una línea --</option>
                             ${lineas
-                              .map(
-                                (l) => `
-                                <option value="${l.id}" data-nombre="${
-                                  l.nombre
-                                }">
-                                    ${l.nombre} ${
-                                  l.tiene_config_scoring ? "✓" : "⚠️"
-                                }
-                                    (Score min: ${
-                                      l.score_datacredito_minimo || "N/A"
-                                    })
+      .map(
+        (l) => `
+                                <option value="${l.id}" data-nombre="${l.nombre
+          }">
+                                    ${l.nombre} ${l.tiene_config_scoring ? "✓" : "⚠️"
+          }
+                                    (Score min: ${l.score_datacredito_minimo || "N/A"
+          })
                                 </option>
                             `
-                              )
-                              .join("")}
+      )
+      .join("")}
                         </select>
                     </div>
                     <div class="col-md-3 mb-2 mb-md-0">
@@ -169,7 +166,7 @@ async function onCambioLineaCredito(lineaId) {
  */
 async function seleccionarLineaCredito(lineaId, nombreLinea) {
   console.log(`🔄 Cargando configuración de línea ${nombreLinea} (ID: ${lineaId})...`);
-  
+
   try {
     lineaSeleccionadaId = lineaId;
     lineaSeleccionadaNombre = nombreLinea;
@@ -185,7 +182,7 @@ async function seleccionarLineaCredito(lineaId, nombreLinea) {
     if (badge) {
       badge.textContent = nombreLinea;
     }
-    
+
     // Actualizar badges en las pestañas
     const badgeNiveles = document.getElementById("badgeLineaNiveles");
     const badgeFactores = document.getElementById("badgeLineaFactores");
@@ -258,15 +255,13 @@ function actualizarInfoLinea(config) {
   }
 
   if (numNivelesInfo) {
-    numNivelesInfo.textContent = `${
-      config.niveles_riesgo?.length || 0
-    } niveles`;
+    numNivelesInfo.textContent = `${config.niveles_riesgo?.length || 0
+      } niveles`;
   }
 
   if (numFactoresInfo) {
-    numFactoresInfo.textContent = `${
-      config.factores_rechazo?.length || 0
-    } factores`;
+    numFactoresInfo.textContent = `${config.factores_rechazo?.length || 0
+      } factores`;
   }
 }
 
@@ -314,12 +309,9 @@ function renderNivelesRiesgoLinea(niveles) {
   niveles.forEach((nivel, index) => {
     html += `
             <div class="col-md-4 mb-3">
-                <div class="card h-100" style="border-top: 4px solid ${
-                  nivel.color
-                };">
-                    <div class="card-header d-flex justify-content-between align-items-center" style="background-color: ${
-                      nivel.color
-                    }20;">
+                <div class="card h-100" style="border: 2px solid ${nivel.color
+      };">
+                    <div class="card-header d-flex justify-content-between align-items-center" style="background-color: ${nivel.color};">
                         <input type="text" class="form-control form-control-sm fw-bold flex-grow-1 me-2"
                                value="${nivel.nombre}"
                                onchange="actualizarNivelLinea(${index}, 'nombre', this.value)"
@@ -334,17 +326,15 @@ function renderNivelesRiesgoLinea(niveles) {
                             <div class="col-6">
                                 <label class="form-label small">Score Mín</label>
                                 <input type="number" class="form-control form-control-sm"
-                                       value="${
-                                         nivel.min
-                                       }" min="0" max="100" step="0.1"
+                                       value="${nivel.min
+      }" min="0" max="100" step="0.1"
                                        onchange="actualizarNivelLinea(${index}, 'min', this.value)">
                             </div>
                             <div class="col-6">
                                 <label class="form-label small">Score Máx</label>
                                 <input type="number" class="form-control form-control-sm"
-                                       value="${
-                                         nivel.max
-                                       }" min="0" max="100" step="0.1"
+                                       value="${nivel.max
+      }" min="0" max="100" step="0.1"
                                        onchange="actualizarNivelLinea(${index}, 'max', this.value)">
                             </div>
                         </div>
@@ -377,8 +367,8 @@ function renderNivelesRiesgoLinea(niveles) {
                             <div class="input-group input-group-sm">
                                 <input type="number" class="form-control" step="0.01"
                                        value="${(
-                                         nivel.aval_porcentaje * 100
-                                       ).toFixed(2)}"
+        nivel.aval_porcentaje * 100
+      ).toFixed(2)}"
                                        onchange="actualizarNivelLinea(${index}, 'aval_porcentaje', this.value / 100)">
                                 <span class="input-group-text">%</span>
                             </div>
@@ -437,7 +427,7 @@ function actualizarNivelLinea(index, campo, valor) {
   if (campo === "tasa_ea") {
     const tasaEA = valor / 100; // Convertir a decimal
     // Fórmula: tasa_nominal_mensual = ((1 + tasa_ea)^(1/12) - 1) * 100
-    const tasaNominalMensual = (Math.pow(1 + tasaEA, 1/12) - 1) * 100;
+    const tasaNominalMensual = (Math.pow(1 + tasaEA, 1 / 12) - 1) * 100;
     configScoringLinea.niveles_riesgo[index].tasa_nominal_mensual = parseFloat(tasaNominalMensual.toFixed(4));
     // Re-renderizar para mostrar el nuevo valor
     renderNivelesRiesgoLinea(configScoringLinea.niveles_riesgo);
@@ -637,30 +627,24 @@ function renderFactoresRechazoLinea(factores) {
                 <tr data-factor-id="${factor.id || index}">
                     <td>
                         <input type="text" class="form-control form-control-sm"
-                               value="${
-                                 factor.criterio_nombre || factor.criterio
-                               }"
+                               value="${factor.criterio_nombre || factor.criterio
+        }"
                                onchange="actualizarFactorLinea(${index}, 'criterio_nombre', this.value)"
                                data-criterio-key="${factor.criterio}">
                     </td>
                     <td>
                         <select class="form-select form-select-sm"
                                 onchange="actualizarFactorLinea(${index}, 'operador', this.value)">
-                            <option value="<" ${
-                              factor.operador === "<" ? "selected" : ""
-                            }>< menor que</option>
-                            <option value="<=" ${
-                              factor.operador === "<=" ? "selected" : ""
-                            }>≤ menor o igual</option>
-                            <option value=">" ${
-                              factor.operador === ">" ? "selected" : ""
-                            }>> mayor que</option>
-                            <option value=">=" ${
-                              factor.operador === ">=" ? "selected" : ""
-                            }>≥ mayor o igual</option>
-                            <option value="=" ${
-                              factor.operador === "=" ? "selected" : ""
-                            }}>= igual a</option>
+                            <option value="<" ${factor.operador === "<" ? "selected" : ""
+        }>< menor que</option>
+                            <option value="<=" ${factor.operador === "<=" ? "selected" : ""
+        }>≤ menor o igual</option>
+                            <option value=">" ${factor.operador === ">" ? "selected" : ""
+        }>> mayor que</option>
+                            <option value=">=" ${factor.operador === ">=" ? "selected" : ""
+        }>≥ mayor o igual</option>
+                            <option value="=" ${factor.operador === "=" ? "selected" : ""
+        }}>= igual a</option>
                         </select>
                     </td>
                     <td>
@@ -795,11 +779,11 @@ async function guardarFactoresRechazoLinea() {
  */
 function agregarFactorRechazoLinea() {
   if (!configScoringLinea) return;
-  
+
   if (!configScoringLinea.factores_rechazo) {
     configScoringLinea.factores_rechazo = [];
   }
-  
+
   configScoringLinea.factores_rechazo.push({
     criterio_nombre: "Nuevo Factor",
     criterio: "nuevo_factor",
@@ -807,7 +791,7 @@ function agregarFactorRechazoLinea() {
     valor: 0,
     mensaje: "Mensaje de rechazo"
   });
-  
+
   renderAprobacionLinea(configScoringLinea.config_general, configScoringLinea.factores_rechazo);
   mostrarAlertaScoring("Factor agregado. Recuerde guardar los cambios.", "info");
 }
@@ -817,11 +801,11 @@ function agregarFactorRechazoLinea() {
  */
 function actualizarFactorLinea(index, campo, valor) {
   if (!configScoringLinea || !configScoringLinea.factores_rechazo) return;
-  
+
   if (campo === 'valor') {
     valor = parseFloat(valor);
   }
-  
+
   configScoringLinea.factores_rechazo[index][campo] = valor;
 }
 
@@ -830,7 +814,7 @@ function actualizarFactorLinea(index, campo, valor) {
  */
 function eliminarFactorLinea(index) {
   if (!configScoringLinea || !configScoringLinea.factores_rechazo) return;
-  
+
   if (confirm("¿Está seguro de eliminar este factor de rechazo?")) {
     configScoringLinea.factores_rechazo.splice(index, 1);
     renderAprobacionLinea(configScoringLinea.config_general, configScoringLinea.factores_rechazo);
@@ -1154,11 +1138,11 @@ function renderCriteriosLinea(criterios) {
   } else {
     // Mostrar criterios en acordeón
     html += `<div class="accordion" id="accordionCriterios">`;
-    
+
     criteriosArray.forEach((criterio, index) => {
       const rangos = criterio.rangos || [];
       const tieneRangos = rangos.length > 0;
-      
+
       html += `
         <div class="accordion-item">
           <h2 class="accordion-header">
@@ -1249,7 +1233,7 @@ function renderCriteriosLinea(criterios) {
         </div>
       `;
     });
-    
+
     html += `</div>`;
   }
 
@@ -1383,7 +1367,7 @@ function copiarConfiguracionModal() {
   console.log("📋 Abriendo modal copiar configuración...");
   console.log("📋 Línea seleccionada:", lineaSeleccionadaId, lineaSeleccionadaNombre);
   console.log("📋 Líneas disponibles:", lineasCreditoDisponibles.length);
-  
+
   if (lineasCreditoDisponibles.length < 2) {
     mostrarAlertaScoring("Necesita al menos 2 líneas de crédito", "warning");
     return;
@@ -1399,7 +1383,7 @@ function copiarConfiguracionModal() {
     try {
       const bsModal = bootstrap.Modal.getInstance(m);
       if (bsModal) bsModal.dispose();
-    } catch(e) {}
+    } catch (e) { }
     m.remove();
   });
 
@@ -1408,7 +1392,7 @@ function copiarConfiguracionModal() {
     .filter((l) => l.id !== lineaSeleccionadaId)
     .map((l) => `<option value="${l.id}">${l.nombre}</option>`)
     .join("");
-  
+
   console.log("📋 Opciones origen (excluye línea actual):", opcionesOrigen);
 
   const modalHtml = `
@@ -1456,7 +1440,7 @@ function copiarConfiguracionModal() {
       </div>
     </div>
   `;
-  
+
   document.body.insertAdjacentHTML("beforeend", modalHtml);
   const modal = document.getElementById("copiarConfigModal");
   new bootstrap.Modal(modal).show();
@@ -1539,13 +1523,13 @@ function getCSRFToken() {
  */
 function agregarCriterioLinea() {
   if (!configScoringLinea) return;
-  
+
   if (!configScoringLinea.criterios) {
     configScoringLinea.criterios = [];
   }
-  
+
   const numCriterios = configScoringLinea.criterios.length;
-  
+
   configScoringLinea.criterios.push({
     codigo: `criterio_${Date.now()}`,
     nombre: `Nuevo Criterio ${numCriterios + 1}`,
@@ -1554,7 +1538,7 @@ function agregarCriterioLinea() {
     tipo_campo: "numerico",
     rangos: []
   });
-  
+
   renderCriteriosLinea(configScoringLinea.criterios);
   mostrarAlertaScoring("Criterio agregado. Recuerde guardar los cambios.", "info");
 }
@@ -1564,13 +1548,13 @@ function agregarCriterioLinea() {
  */
 function actualizarCriterioLinea(index, campo, valor) {
   if (!configScoringLinea || !configScoringLinea.criterios) return;
-  
+
   if (campo === 'peso') {
     valor = parseFloat(valor);
   }
-  
+
   configScoringLinea.criterios[index][campo] = valor;
-  
+
   // Re-renderizar para actualizar la suma de pesos
   if (campo === 'peso') {
     renderCriteriosLinea(configScoringLinea.criterios);
@@ -1582,7 +1566,7 @@ function actualizarCriterioLinea(index, campo, valor) {
  */
 function eliminarCriterioLinea(index) {
   if (!configScoringLinea || !configScoringLinea.criterios) return;
-  
+
   const criterio = configScoringLinea.criterios[index];
   if (confirm(`¿Está seguro de eliminar el criterio "${criterio.nombre}"?`)) {
     configScoringLinea.criterios.splice(index, 1);
@@ -1596,18 +1580,18 @@ function eliminarCriterioLinea(index) {
  */
 function agregarRangoCriterio(criterioIndex) {
   if (!configScoringLinea || !configScoringLinea.criterios) return;
-  
+
   if (!configScoringLinea.criterios[criterioIndex].rangos) {
     configScoringLinea.criterios[criterioIndex].rangos = [];
   }
-  
+
   configScoringLinea.criterios[criterioIndex].rangos.push({
     min: 0,
     max: 100,
     puntos: 10,
     descripcion: "Nuevo rango"
   });
-  
+
   renderCriteriosLinea(configScoringLinea.criterios);
 }
 
@@ -1616,11 +1600,11 @@ function agregarRangoCriterio(criterioIndex) {
  */
 function actualizarRangoCriterio(criterioIndex, rangoIndex, campo, valor) {
   if (!configScoringLinea || !configScoringLinea.criterios) return;
-  
+
   if (campo === 'min' || campo === 'max' || campo === 'puntos') {
     valor = parseFloat(valor);
   }
-  
+
   configScoringLinea.criterios[criterioIndex].rangos[rangoIndex][campo] = valor;
 }
 
@@ -1629,7 +1613,7 @@ function actualizarRangoCriterio(criterioIndex, rangoIndex, campo, valor) {
  */
 function eliminarRangoCriterio(criterioIndex, rangoIndex) {
   if (!configScoringLinea || !configScoringLinea.criterios) return;
-  
+
   if (confirm("¿Está seguro de eliminar este rango?")) {
     configScoringLinea.criterios[criterioIndex].rangos.splice(rangoIndex, 1);
     renderCriteriosLinea(configScoringLinea.criterios);
@@ -1641,7 +1625,7 @@ function eliminarRangoCriterio(criterioIndex, rangoIndex) {
  */
 function crearCriteriosPorDefecto() {
   if (!configScoringLinea) return;
-  
+
   configScoringLinea.criterios = [
     {
       codigo: "edad",
@@ -1721,7 +1705,7 @@ function crearCriteriosPorDefecto() {
       ]
     }
   ];
-  
+
   renderCriteriosLinea(configScoringLinea.criterios);
   mostrarAlertaScoring("Criterios por defecto creados. Recuerde guardar los cambios.", "success");
 }
@@ -1734,16 +1718,16 @@ async function guardarCriteriosLinea() {
     mostrarAlertaScoring("No hay línea seleccionada", "warning");
     return;
   }
-  
+
   // Validar que los pesos sumen 100
   const criterios = configScoringLinea.criterios || [];
   const sumaPesos = criterios.reduce((sum, c) => sum + (parseFloat(c.peso) || 0), 0);
-  
+
   if (Math.abs(sumaPesos - 100) > 0.1) {
     mostrarAlertaScoring(`Los pesos deben sumar 100%. Actualmente suman ${sumaPesos.toFixed(1)}%`, "danger");
     return;
   }
-  
+
   try {
     const response = await fetch(
       `/api/scoring/linea/${lineaSeleccionadaId}/criterios`,

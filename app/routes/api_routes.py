@@ -899,3 +899,236 @@ def api_permisos_limpiar_overrides():
     except Exception as e:
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ============================================================================
+# RUTAS DE PERMISOS FALTANTES (MIGRADO DE PERMISOS.PY)
+# ============================================================================
+
+@api_bp.route("/permisos/mis-permisos", methods=["GET"])
+@api_login_required
+def api_mis_permisos():
+    """Obtener permisos del usuario actual"""
+    import sys
+    from pathlib import Path
+    BASE_DIR = Path(__file__).parent.parent.parent.resolve()
+    if str(BASE_DIR) not in sys.path:
+        sys.path.insert(0, str(BASE_DIR))
+        
+    try:
+        from permisos import obtener_permisos_usuario_actual
+        
+        permisos = obtener_permisos_usuario_actual()
+        
+        return jsonify({
+            "success": True,
+            "username": session.get("username"),
+            "rol": session.get("rol"),
+            "permisos": permisos,
+            "total": len(permisos)
+        })
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@api_bp.route("/permisos/verificar/<permiso>", methods=["GET"])
+@api_login_required
+def api_verificar_permiso(permiso):
+    """Verificar si usuario tiene permiso"""
+    import sys
+    from pathlib import Path
+    BASE_DIR = Path(__file__).parent.parent.parent.resolve()
+    if str(BASE_DIR) not in sys.path:
+        sys.path.insert(0, str(BASE_DIR))
+    
+    try:
+        from permisos import tiene_permiso
+        
+        return jsonify({
+            "success": True,
+            "permiso": permiso,
+            "tiene": tiene_permiso(permiso)
+        })
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@api_bp.route("/permisos/todos", methods=["GET"])
+@api_login_required
+@api_requiere_permiso("usr_permisos")
+def api_todos_permisos():
+    """Obtener todos los permisos del sistema"""
+    import sys
+    from pathlib import Path
+    BASE_DIR = Path(__file__).parent.parent.parent.resolve()
+    if str(BASE_DIR) not in sys.path:
+        sys.path.insert(0, str(BASE_DIR))
+        
+    try:
+        from permisos import obtener_todos_permisos
+        
+        datos = obtener_todos_permisos()
+        return jsonify(datos)
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@api_bp.route("/permisos/usuario/<int:usuario_id>/agregar", methods=["POST"])
+@api_login_required
+@api_requiere_permiso("usr_permisos")
+def api_agregar_permiso_usuario(usuario_id):
+    """Agregar permiso a usuario"""
+    import sys
+    from pathlib import Path
+    BASE_DIR = Path(__file__).parent.parent.parent.resolve()
+    if str(BASE_DIR) not in sys.path:
+        sys.path.insert(0, str(BASE_DIR))
+
+    try:
+        from permisos import agregar_permiso_usuario
+        
+        data = request.get_json()
+        if not data or 'permiso' not in data:
+            return jsonify({'success': False, 'error': 'Permiso no especificado'}), 400
+            
+        resultado = agregar_permiso_usuario(
+            usuario_id,
+            data['permiso'],
+            data.get('motivo')
+        )
+        
+        if resultado.get('success'):
+            return jsonify(resultado)
+        else:
+            return jsonify(resultado), 400
+            
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@api_bp.route("/permisos/usuario/<int:usuario_id>/quitar", methods=["POST"])
+@api_login_required
+@api_requiere_permiso("usr_permisos")
+def api_quitar_permiso_usuario(usuario_id):
+    """Quitar permiso a usuario"""
+    import sys
+    from pathlib import Path
+    BASE_DIR = Path(__file__).parent.parent.parent.resolve()
+    if str(BASE_DIR) not in sys.path:
+        sys.path.insert(0, str(BASE_DIR))
+
+    try:
+        from permisos import quitar_permiso_usuario
+        
+        data = request.get_json()
+        if not data or 'permiso' not in data:
+            return jsonify({'success': False, 'error': 'Permiso no especificado'}), 400
+            
+        resultado = quitar_permiso_usuario(
+            usuario_id,
+            data['permiso'],
+            data.get('motivo')
+        )
+        
+        if resultado.get('success'):
+            return jsonify(resultado)
+        else:
+            return jsonify(resultado), 400
+            
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@api_bp.route("/permisos/usuario/<int:usuario_id>/restaurar", methods=["POST"])
+@api_login_required
+@api_requiere_permiso("usr_permisos")
+def api_restaurar_permiso_usuario(usuario_id):
+    """Restaurar permiso de usuario"""
+    import sys
+    from pathlib import Path
+    BASE_DIR = Path(__file__).parent.parent.parent.resolve()
+    if str(BASE_DIR) not in sys.path:
+        sys.path.insert(0, str(BASE_DIR))
+
+    try:
+        from permisos import restaurar_permiso_usuario
+        
+        data = request.get_json()
+        if not data or 'permiso' not in data:
+            return jsonify({'success': False, 'error': 'Permiso no especificado'}), 400
+            
+        resultado = restaurar_permiso_usuario(usuario_id, data['permiso'])
+        
+        if resultado.get('success'):
+            return jsonify(resultado)
+        else:
+            return jsonify(resultado), 400
+            
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@api_bp.route("/permisos/rol/<rol>/agregar", methods=["POST"])
+@api_login_required
+@api_requiere_permiso("usr_permisos")
+def api_agregar_permiso_rol(rol):
+    """Agregar permiso a rol"""
+    import sys
+    from pathlib import Path
+    BASE_DIR = Path(__file__).parent.parent.parent.resolve()
+    if str(BASE_DIR) not in sys.path:
+        sys.path.insert(0, str(BASE_DIR))
+
+    try:
+        from permisos import agregar_permiso_rol
+        
+        data = request.get_json()
+        if not data or 'permiso' not in data:
+            return jsonify({'success': False, 'error': 'Permiso no especificado'}), 400
+            
+        resultado = agregar_permiso_rol(rol, data['permiso'])
+        
+        if resultado.get('success'):
+            return jsonify(resultado)
+        else:
+            return jsonify(resultado), 400
+            
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@api_bp.route("/permisos/rol/<rol>/quitar", methods=["POST"])
+@api_login_required
+@api_requiere_permiso("usr_permisos")
+def api_quitar_permiso_rol(rol):
+    """Quitar permiso a rol"""
+    import sys
+    from pathlib import Path
+    BASE_DIR = Path(__file__).parent.parent.parent.resolve()
+    if str(BASE_DIR) not in sys.path:
+        sys.path.insert(0, str(BASE_DIR))
+
+    try:
+        from permisos import quitar_permiso_rol
+        
+        data = request.get_json()
+        if not data or 'permiso' not in data:
+            return jsonify({'success': False, 'error': 'Permiso no especificado'}), 400
+            
+        resultado = quitar_permiso_rol(rol, data['permiso'])
+        
+        if resultado.get('success'):
+            return jsonify(resultado)
+        else:
+            return jsonify(resultado), 400
+            
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500

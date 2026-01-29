@@ -127,14 +127,19 @@ def scoring_page():
 @login_required
 @requiere_permiso("sco_ejecutar")
 def calcular_scoring():
-    """Procesar evaluación de scoring"""
+    """
+    Procesar evaluación de scoring usando ScoringService.
+    REFACTORIZADO: 2026-01-26 - Ahora usa ScoringService para lógica consistente.
+    """
     import sys
     from pathlib import Path
     BASE_DIR = Path(__file__).parent.parent.parent.resolve()
     if str(BASE_DIR) not in sys.path:
         sys.path.insert(0, str(BASE_DIR))
     
-    from db_helpers import cargar_scoring, guardar_evaluacion
+    from db_helpers import cargar_scoring, guardar_evaluacion, cargar_configuracion
+    from db_helpers_scoring_linea import cargar_scoring_por_linea
+    from ..services.scoring_service import ScoringService
     from ..utils.timezone import obtener_hora_colombia
     from ..utils.formatting import parse_currency_value
     
@@ -151,100 +156,61 @@ def calcular_scoring():
             flash("Nombre y cédula son requeridos", "error")
             return redirect(url_for("scoring.scoring_page"))
         
-        # Cargar configuración de scoring
-        scoring_config = cargar_scoring()
-        criterios = scoring_config.get("criterios", {})
-
-        niveles_riesgo = scoring_config.get("niveles_riesgo", [])
-        factores_rechazo = scoring_config.get("factores_rechazo_automatico", [])
-        puntaje_minimo = scoring_config.get("puntaje_minimo_aprobacion", 17)
+        # =====================================================================
+        # USAR SCORING SERVICE PARA CÁLCULO Y RECHAZO AUTOMÁTICO
+        # =====================================================================
         
-        # Calcular score (lógica simplificada - el cálculo real está en flask_app.py)
-        score_total = 0
-        criterios_evaluados = []
+        # Cargar configuración específica de la línea de crédito (si existe)
+        scoring_config_linea = None
+        if linea_credito:
+            scoring_config_linea = cargar_scoring_por_linea(linea_credito)
         
-        for codigo, config_criterio in criterios.items():
-            if not config_criterio.get("activo", True):
-                continue
-            
-            valor = form_data.get(codigo)
-            if valor is None:
-                continue
-            
-            peso = config_criterio.get("peso", 5)
-            rangos = config_criterio.get("rangos", [])
-            
-            # Determine range type (numeric vs categorical) based on config or value
-            # Actually, `valor` is string from form. We try to convert to float.
-            valor_num = None
-            try:
-                # Remove currency symbols if present
-                clean_val = str(valor).replace('$', '').replace('.', '').replace(',', '').strip()
-                if clean_val.isdigit():
-                     valor_num = float(clean_val)
-                else: 
-                     # Handle percentages "46" or "46%"
-                     clean_val = clean_val.replace('%', '')
-                     if clean_val.replace('.', '', 1).isdigit():
-                         valor_num = float(clean_val)
-            except:
-                pass
-
-            puntaje_criterio = 0
-            
-            # Find matching range
-            for rango in rangos:
-                rango_min = rango.get("min")
-                rango_max = rango.get("max")
-                rango_valor = rango.get("valor")
-                puntos = rango.get("puntos", 0)
-                
-                # Define bounds if numeric logic applies
-                lower_bound = float(rango_min) if rango_min is not None else float('-inf')
-                upper_bound = float(rango_max) if rango_max is not None else float('inf')
-
-
-                # Logic 1: Categorical Match
-                if rango_valor is not None:
-                     # Check exact match or substring
-                     if str(rango_valor).lower() == str(valor).lower():
-                         puntaje_criterio = puntos
-                         break
-                     # Sometimes Select values are codes like "rango_1", check that too
-                     if str(rango_valor) == str(valor):
-                         puntaje_criterio = puntos
-                         break
-                
-                # Logic 2: Numeric Range
-                elif valor_num is not None and (rango_min is not None or rango_max is not None):
-                     if lower_bound <= valor_num <= upper_bound:
-                         puntaje_criterio = puntos
-                         break
-            
-            score_total += puntaje_criterio
-            criterios_evaluados.append({
-                "codigo": codigo,
-                "nombre": config_criterio.get("nombre", codigo),
-                "valor": valor,
-                "puntaje": puntaje_criterio,
-                "peso": peso
-            })
+        # Si no hay config específica de línea, usar config global
+        if not scoring_config_linea:
+            scoring_config_linea = cargar_scoring()
         
-        # Determinar nivel de riesgo
-        nivel_riesgo = "Alto riesgo"
-        for nivel in niveles_riesgo:
-            if nivel.get("min", 0) <= score_total <= nivel.get("max", 100):
-                nivel_riesgo = nivel.get("nombre", "Sin clasificar")
-                break
+        # Instanciar el servicio con la configuración
+        scoring_service = ScoringService(scoring_config_linea)
         
-        # Verificar factores de rechazo
-        rechazo_automatico = False
-        razon_rechazo = None
+        # Preparar valores para el servicio (limpiar datos del formulario)
+        valores_criterios = {}
+        for key, value in form_data.items():
+            # Excluir campos que no son criterios
+            if key not in ["nombre_cliente", "cedula", "linea_credito", "monto_solicitado", "csrf_token"]:
+                # Intentar convertir valores numéricos
+                try:
+                    clean_val = str(value).replace('$', '').replace('.', '').replace(',', '').replace('%', '').strip()
+                    if clean_val and (clean_val.isdigit() or clean_val.replace('.', '', 1).isdigit()):
+                        valores_criterios[key] = float(clean_val)
+                    else:
+                        valores_criterios[key] = value
+                except:
+                    valores_criterios[key] = value
         
-        # Determinar resultado
-        aprobado = score_total >= puntaje_minimo and not rechazo_automatico
+        # 1. VERIFICAR RECHAZO AUTOMÁTICO PRIMERO (usando el servicio)
+        rechazo_info = scoring_service.verificar_rechazo_automatico(valores_criterios)
         
-        # Crear evaluación
+        rechazo_automatico = rechazo_info.get("rechazo", False)
+        razon_rechazo = rechazo_info.get("razon")
+        factor_rechazo = rechazo_info.get("factor")
+        
+        # 2. CALCULAR SCORING COMPLETO (usando el servicio)
+        resultado_scoring = scoring_service.calcular_scoring(valores_criterios, linea_credito)
+        
+        # Extraer valores del resultado del servicio
+        score_total = resultado_scoring.get("score", 0)
+        score_normalizado = resultado_scoring.get("score_normalizado", 0)
+        nivel_riesgo = resultado_scoring.get("nivel", "Sin clasificar")
+        nivel_detalle = resultado_scoring.get("nivel_detalle", {})
+        criterios_evaluados = resultado_scoring.get("criterios_evaluados", [])
+        aprobado = resultado_scoring.get("aprobado", False)
+        puntaje_minimo = resultado_scoring.get("puntaje_minimo", 17)
+        
+        # Sobrescribir aprobado si hubo rechazo automático
+        if rechazo_automatico:
+            aprobado = False
+        
+        # Crear evaluación con datos del servicio
         evaluacion = {
             "timestamp": obtener_hora_colombia().isoformat(),
             "asesor": session.get("username"),
@@ -254,14 +220,17 @@ def calcular_scoring():
             "monto_solicitado": monto_solicitado,
             "resultado": {
                 "score": score_total,
-                "score_normalizado": min(100, max(0, score_total)),
+                "score_normalizado": score_normalizado,
                 "nivel": nivel_riesgo,
                 "aprobado": aprobado,
                 "rechazo_automatico": rechazo_automatico,
-                "razon_rechazo": razon_rechazo
+                "razon_rechazo": razon_rechazo,
+                "factor_rechazo": factor_rechazo,
+                "puntaje_minimo": puntaje_minimo
             },
             "criterios_evaluados": criterios_evaluados,
             "nivel_riesgo": nivel_riesgo,
+            "nivel_detalle": nivel_detalle,
             "estado_comite": None,
             "origen": "Manual"
         }
@@ -269,20 +238,28 @@ def calcular_scoring():
         # Guardar evaluación
         guardar_evaluacion(evaluacion)
         
-        # Re-renderizar el formulario con resultados incluidos
-        # Cargar de nuevo la configuración para mostrar el formulario
-        lineas_credito = cargar_configuracion().get("LINEAS_CREDITO", {})
-        criterios = scoring_config.get("criterios", {})
+        # =====================================================================
+        # RE-RENDERIZAR FORMULARIO CON RESULTADOS
+        # =====================================================================
+        
+        # Cargar configuración para el template
+        config = cargar_configuracion()
+        lineas_credito = config.get("LINEAS_CREDITO", {})
+        
+        # Usar la misma config que el servicio
+        criterios = scoring_config_linea.get("criterios", {})
+        secciones = scoring_config_linea.get("secciones", [])
+        niveles_riesgo = scoring_config_linea.get("niveles_riesgo", [])
+        factores_rechazo = scoring_config_linea.get("factores_rechazo_automatico", [])
         
         # Agrupar criterios por sección
         from db_helpers_scoring_linea import obtener_secciones_criterios
         criterios_por_seccion = obtener_secciones_criterios(linea_credito)
         
-        secciones = scoring_config.get("secciones", [])
         scoring_criterios_agrupados = []
-        
         for seccion in secciones:
-            seccion_criterios = criterios_por_seccion.get(seccion["id"], [])
+            seccion_id = seccion.get("id", "")
+            seccion_criterios = criterios_por_seccion.get(seccion_id, [])
             if seccion_criterios:
                 scoring_criterios_agrupados.append({
                     "seccion": seccion,

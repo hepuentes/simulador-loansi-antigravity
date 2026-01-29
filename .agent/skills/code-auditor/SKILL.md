@@ -1,114 +1,57 @@
 ---
 name: code-auditor
-description: Audita código Python Flask para detectar bugs, code smells y problemas de calidad. Usa cuando el usuario pida revisar código, analizar calidad, o encontrar problemas. SOLO reporta, NO modifica código.
+description: Auditor de código especializado en la Verificación Determinista Obligatoria (VDO). Verifica la sintaxis de Python y la aplicación real de cambios en archivos de texto usando comandos PowerShell.
+license: MIT
+metadata:
+  version: "2.0"
 ---
 
-# Code Auditor Skill
+# Code Auditor Skill - Protocolo de Verificación (VDO)
 
-## Cuándo se activa
-- Usuario dice: "revisa", "audita", "analiza", "encuentra problemas", "revisa calidad"
-- Revisión antes de deploy
-- Comportamiento extraño sin error claro
+## Propósito
 
-## Rol Importante
-Este skill SOLO analiza y reporta.
-NO hace modificaciones al código.
-Para corregir, el usuario debe pedir al flask-developer.
+Tu función es asegurar la **integridad, sintaxis y aplicación real** de los cambios. **NUNCA** debes asumir que un cambio se aplicó correctamente; **DEBES** verificarlo.
 
-## Proceso de Auditoría
+## Instrucciones de Verificación (Invocado por /verify)
 
-### Paso 1: Listar archivos a revisar
+Cuando se te invoque con una `<ruta_del_archivo>` y un `<snippet_de_codigo_nuevo>`, **DEBES** ejecutar los siguientes pasos y reportar la salida completa:
+
+### 1. Verificación de Sintaxis (Solo Archivos Python)
+
+*   Si el archivo tiene extensión `.py`, ejecuta:
+    ```powershell
+    python -m py_compile <ruta_del_archivo>
+    ```
+*   Si el comando devuelve un error, reporta el error y **DETÉN** el proceso. El cambio es inválido.
+
+### 2. Verificación de Contenido (Todos los Archivos)
+
+*   Utiliza `Select-String` para buscar el `<snippet_de_codigo_nuevo>` dentro del archivo. Esto es la **prueba irrefutable** de que el cambio se aplicó.
+*   Comando a ejecutar:
+    ```powershell
+    Get-Content <ruta_del_archivo> | Select-String "<snippet_de_codigo_nuevo>"
+    ```
+*   Si el comando no devuelve el snippet, el cambio **NO** se aplicó. Reporta el fallo y **DETÉN** el proceso.
+
+### 3. Reporte de Salida
+
+Tu salida **DEBE** ser una concatenación de los resultados del Paso 1 y el Paso 2.
+
+```markdown
+**RESULTADO DE AUDITORÍA PARA:** <ruta_del_archivo>
+
+**[Paso 1] Verificación de Sintaxis:**
 ```powershell
-Get-ChildItem -Path "app" -Recurse -Filter "*.py" | Select-Object FullName
+# Salida de python -m py_compile (o "N/A" si no es .py)
 ```
 
-### Paso 2: Buscar problemas comunes
-
-#### SQL Injection (CRÍTICO)
+**[Paso 2] Prueba de Contenido (VDO):**
 ```powershell
-Select-String -Path "app\*.py" -Pattern "execute.*f[`"']" -Recurse
-Select-String -Path "app\*.py" -Pattern "execute.*\+" -Recurse
+# Salida de Get-Content <ruta_del_archivo> | Select-String "<snippet_de_codigo_nuevo>"
 ```
-
-#### CSRF faltante (CRÍTICO)
-```powershell
-Select-String -Path "templates\*.html" -Pattern "method=.POST" -Recurse
-Select-String -Path "templates\*.html" -Pattern "csrf_token" -Recurse
 ```
+## Regla de Reporte Final
 
-#### Excepciones silenciadas (ALTO)
-```powershell
-Select-String -Path "app\*.py" -Pattern "except:[\s]*pass" -Recurse
-```
+**SOLO** si el Paso 1 no genera errores y el Paso 2 devuelve el snippet, el resultado de la auditoría es **ÉXITO**.
 
-#### Imports no usados (MEDIO)
-Revisar manualmente los imports vs uso en el código.
 
-### Paso 3: Generar Reporte
-
-## Formato de Reporte OBLIGATORIO
-
-```
-═══════════════════════════════════════════════════════
-              REPORTE DE AUDITORÍA
-═══════════════════════════════════════════════════════
-
-📊 RESUMEN
-- Archivos analizados: X
-- Problemas CRÍTICOS: X
-- Problemas ALTOS: X
-- Problemas MEDIOS: X
-
-═══════════════════════════════════════════════════════
-                 PROBLEMAS ENCONTRADOS
-═══════════════════════════════════════════════════════
-
-📍 UBICACIÓN: archivo.py:número_línea
-
-🔴 SEVERIDAD: CRÍTICA | ALTA | MEDIA
-
-📝 PROBLEMA: 
-Descripción clara del problema.
-Código actual:
-    [código problemático]
-
-💡 SOLUCIÓN:
-Código corregido:
-    [código correcto]
-
-✅ VERIFICACIÓN:
-Cómo confirmar que se arregló.
-
-═══════════════════════════════════════════════════════
-                    SIGUIENTE PASO
-═══════════════════════════════════════════════════════
-
-Para corregir estos problemas, decir:
-"Corrige el problema de [descripción] en [archivo:línea]"
-```
-
-## Categorías de Severidad
-
-### CRÍTICA (bloquea funcionamiento o seguridad)
-- SQL Injection
-- CSRF faltante en formularios POST
-- Credenciales hardcodeadas
-- Errores de sintaxis
-
-### ALTA (bugs probables)
-- Excepciones silenciadas
-- Variables no definidas
-- Imports que fallan
-- Archivos referenciados que no existen
-
-### MEDIA (code smells)
-- Funciones muy largas (>50 líneas)
-- Código duplicado
-- Nombres poco descriptivos
-- Imports no utilizados
-
-## Restricciones
-- NO modificar ningún archivo
-- SOLO analizar y reportar
-- Proveer ubicación EXACTA (archivo:línea)
-- Proveer código de solución COPIABLE

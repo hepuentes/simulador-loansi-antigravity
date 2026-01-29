@@ -1,63 +1,22 @@
 ---
-name: verify
-description: Verificar que los cambios se aplicaron correctamente
+description: Flujo de trabajo esencial para la Verificación Determinista Obligatoria (VDO) post-modificación.
 ---
 
-# Workflow: Verificar Cambios
+## Flujo de Trabajo: Verificación Obligatoria (/verify)
 
-## Paso 1: Listar Archivos Modificados
-Identificar qué archivos deberían haber cambiado.
+**Descripción:** Flujo de trabajo esencial para la Verificación Determinista Obligatoria (VDO) post-modificación.
 
-## Paso 2: Verificar Cada Archivo
-
-Para cada archivo modificado:
-
-### Si es Python:
-```powershell
-# Verificar sintaxis
-python -m py_compile ruta/archivo.py
-
-# Verificar contenido
-Get-Content "ruta/archivo.py" | Select-String "codigo_esperado"
+**Uso:**
+```
+/verify <ruta_del_archivo> "<snippet_de_codigo_nuevo>"
 ```
 
-### Si es HTML:
-```powershell
-Get-Content "templates/archivo.html" | Select-String "codigo_esperado"
-```
+**Pasos:**
 
-### Si es JavaScript:
-```powershell
-Get-Content "static/js/archivo.js" | Select-String "codigo_esperado"
-```
-
-### Si es CSS:
-```powershell
-Get-Content "static/css/archivo.css" | Select-String "codigo_esperado"
-```
-
-## Paso 3: Reportar Estado
-
-```
-## Verificación de Cambios
-
-| Archivo | Sintaxis | Contenido Guardado |
-|---------|----------|-------------------|
-| archivo1.py | ✅ OK | ✅ SÍ |
-| archivo2.html | N/A | ✅ SÍ |
-| archivo3.js | N/A | ❌ NO |
-
-### Problemas Encontrados:
-- archivo3.js: El cambio NO se guardó
-
-### Acción Requerida:
-1. Hacer clic en "Accept All" si no lo hiciste
-2. Volver a aplicar el cambio en archivo3.js
-```
-
-## Paso 4: Si Hay Problemas
-
-Si algún archivo NO tiene los cambios:
-1. Verificar que el usuario hizo clic en "Accept All"
-2. Volver a aplicar el cambio
-3. Verificar de nuevo
+1.  **Activación del Auditor:** Invoca la skill `code-auditor` con la ruta del archivo y el snippet de código.
+    *   **Instrucción al Auditor:** "Audita el archivo `<ruta_del_archivo>` con el snippet de prueba `<snippet_de_codigo_nuevo>` siguiendo tus instrucciones de verificación de sintaxis y contenido."
+2.  **Captura de Resultado:** Captura la salida completa de la ejecución de `code-auditor`.
+3.  **Evaluación:**
+    *   Si la salida del auditor indica un error de sintaxis o no contiene el snippet de código, reporta el fallo y **DETÉN** el flujo de trabajo.
+    *   Si la salida del auditor es exitosa y contiene la prueba de `Select-String`, reporta el éxito de la verificación.
+4.  **Prueba de Éxito:** La salida de este flujo de trabajo **DEBE** ser la salida completa generada por el `code-auditor`.

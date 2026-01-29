@@ -1,102 +1,34 @@
-# Reglas del Proyecto Flask LOANSI
+---
+trigger: always_on
+---
 
-## Stack Técnico
-- Python 3.10 (instalación global, SIN venv)
-- Flask 3.x con Flask-WTF
-- SQLite como base de datos
-- Bootstrap 5.3.2 (CDN)
-- Windows 11 con PowerShell
+## Reglas de Contexto para Proyecto Flask LOANSI
 
-## Comandos de Terminal (Windows PowerShell)
+**Activación:** Siempre Activa (Always On)
 
-### Ejecutar servidor
-```powershell
-python run.py
+### 1. Protocolo de Verificación de Cambios (VDO)
+
+**MANDATORIO:** Después de cualquier modificación en cualquier archivo, **DEBES** ejecutar el flujo de trabajo de verificación:
+
 ```
-
-### Verificar sintaxis Python
-```powershell
-python -m py_compile archivo.py
+/verify <ruta_del_archivo> <snippet_de_codigo_nuevo>
 ```
+*El `<snippet_de_codigo_nuevo>` debe ser una cadena de texto corta y única que se haya añadido o modificado.*
 
-### Instalar dependencia (si falta)
-```powershell
-pip install nombre-paquete
-```
+### 2. Comandos de Terminal (Windows PowerShell)
 
-### Verificar que un cambio se guardó
-```powershell
-Get-Content "ruta/archivo.py" | Select-String "texto_esperado"
-```
+**DEBES** usar la siguiente sintaxis para la interacción con el sistema de archivos y la ejecución de código:
 
-### Ver contenido de archivo
-```powershell
-Get-Content "ruta/archivo.py"
-```
+| Tarea | Comando PowerShell |
+| :--- | :--- |
+| **Verificar Sintaxis Python** | `python -m py_compile <ruta_del_archivo>` |
+| **Verificar Contenido (VDO)** | `Get-Content <ruta_del_archivo> | Select-String "<snippet_de_codigo_nuevo>"` |
+| **Leer Contenido Completo** | `Get-Content <ruta_del_archivo>` |
+| **Escribir/Sobrescribir** | `Set-Content <ruta_del_archivo> -Value "<contenido>"` |
 
-## Reglas de Código OBLIGATORIAS
+### 3. Reglas de Código Obligatorias
 
-### CSRF - En TODOS los formularios POST
-```html
-<form method="POST">
-    {{ form.csrf_token }}
-</form>
-```
-
-### SQL - SIEMPRE usar parámetros
-```python
-# CORRECTO
-cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
-
-# PROHIBIDO
-cursor.execute(f"SELECT * FROM users WHERE id = {user_id}")
-```
-
-### Templates - Herencia obligatoria
-```html
-{% extends 'dashboards/_base_dashboard.html' %}
-{% block content %}
-<!-- contenido -->
-{% endblock %}
-```
-
-## Estructura de Archivos Importantes
-
-| Archivo | Propósito |
-|---------|-----------|
-| run.py | Punto de entrada de la aplicación |
-| app/__init__.py | Factory de la aplicación Flask |
-| app/routes/ | Blueprints con las rutas |
-| templates/ | Plantillas HTML (Jinja2) |
-| static/js/ | JavaScript del frontend |
-| static/css/ | Estilos CSS |
-
-## Prevención de Errores
-
-### Antes de modificar un archivo:
-1. Leer el archivo completo
-2. Identificar la sección exacta a modificar
-3. Verificar que no hay otros archivos con nombres similares
-
-### Después de modificar:
-1. Ejecutar verificación de sintaxis
-2. Confirmar que el cambio se guardó (Get-Content)
-3. Si es Python, verificar que no hay errores de import
-
-### Archivos a NUNCA modificar:
-- Archivos con sufijo _backup, _old, _fixed
-- Archivos en carpeta /archive/
-- Archivos __pycache__/
-
-## Credenciales de Prueba
-```
-URL: http://127.0.0.1:5000/login
-Usuario: hpsupersu
-Contraseña: loanaP25@
-```
-
-## Navegador y Pruebas
-- El navegador integrado de Antigravity NO funciona en v1.15.8
-- Las pruebas de UI se hacen manualmente
-- El agente puede probar endpoints con Invoke-WebRequest en PowerShell
-- El usuario abre http://127.0.0.1:5000 en su navegador normal
+1.  **CSRF:** Todos los formularios `POST` en templates HTML **DEBEN** incluir `{{ form.csrf_token }}`.
+2.  **SQL Seguro:** **PROHIBIDO** usar f-strings o concatenación para construir consultas SQL. **SIEMPRE** usar parámetros: `cursor.execute("SELECT * FROM tabla WHERE id = ?", (valor,))`.
+3.  **Estructura:** El punto de entrada es `run.py`. Las rutas están en `app/routes/`.
+4.  **Templates:** Se espera herencia de templates (ej. `{% extends 'base.html' %}`).

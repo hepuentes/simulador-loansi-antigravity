@@ -244,6 +244,8 @@ def obtener_config_scoring_linea(linea_id):
         "criterios": []
     }
     
+    print(f"\n🔍 DEBUG obtener_config_scoring_linea(linea_id={linea_id})")
+    
     try:
         # 1. Configuración general
         cursor.execute("""
@@ -339,7 +341,7 @@ def obtener_config_scoring_linea(linea_id):
                 csm.nombre,
                 csm.descripcion,
                 csm.tipo_campo,
-                csm.seccion_id,
+                COALESCE(clc.seccion, 'Sin Categoría') as seccion,
                 clc.peso,
                 clc.activo,
                 clc.orden,
@@ -364,12 +366,17 @@ def obtener_config_scoring_linea(linea_id):
                 "nombre": row[1],
                 "descripcion": row[2],
                 "tipo_campo": row[3],
-                "seccion_id": row[4],
+                "seccion": row[4] or "Sin Categoría",
                 "peso": row[5] or 5,
                 "activo": bool(row[6]) if row[6] is not None else True,
                 "orden": row[7] or 0,
                 "rangos": rangos
             })
+        
+        # DEBUG: Print first 3 criterios for verification
+        print(f"   📊 Criterios cargados: {len(config['criterios'])}")
+        for i, c in enumerate(config['criterios'][:3]):
+            print(f"      [{i}] {c['codigo']}: seccion='{c['seccion']}', peso={c['peso']}")
         
         # Guardar en cache
         _SCORING_LINEA_CACHE[cache_key] = (config, now)
@@ -905,23 +912,48 @@ def obtener_criterios_linea(linea_id):
     cursor = conn.cursor()
     
     try:
-        cursor.execute("""
-            SELECT 
-                csm.codigo,
-                csm.nombre,
-                csm.descripcion,
-                csm.tipo_campo,
-                csm.seccion_id,
-                COALESCE(clc.peso, 5) as peso,
-                COALESCE(clc.activo, 1) as activo,
-                COALESCE(clc.orden, csm.id) as orden,
-                clc.rangos_json
-            FROM criterios_scoring_master csm
-            LEFT JOIN criterios_linea_credito clc 
-                ON csm.id = clc.criterio_master_id AND clc.linea_credito_id = ?
-            WHERE csm.activo = 1
-            ORDER BY orden
-        """, (linea_id,))
+        # Verificar si existe la columna seccion
+        cursor.execute("PRAGMA table_info(criterios_linea_credito)")
+        columnas = [col[1] for col in cursor.fetchall()]
+        tiene_seccion = 'seccion' in columnas
+        
+        if tiene_seccion:
+            cursor.execute("""
+                SELECT 
+                    csm.codigo,
+                    csm.nombre,
+                    csm.descripcion,
+                    csm.tipo_campo,
+                    csm.seccion_id,
+                    COALESCE(clc.peso, 5) as peso,
+                    COALESCE(clc.activo, 1) as activo,
+                    COALESCE(clc.orden, csm.id) as orden,
+                    clc.rangos_json,
+                    COALESCE(clc.seccion, 'Sin Categoría') as seccion
+                FROM criterios_scoring_master csm
+                LEFT JOIN criterios_linea_credito clc 
+                    ON csm.id = clc.criterio_master_id AND clc.linea_credito_id = ?
+                WHERE csm.activo = 1
+                ORDER BY orden
+            """, (linea_id,))
+        else:
+            cursor.execute("""
+                SELECT 
+                    csm.codigo,
+                    csm.nombre,
+                    csm.descripcion,
+                    csm.tipo_campo,
+                    csm.seccion_id,
+                    COALESCE(clc.peso, 5) as peso,
+                    COALESCE(clc.activo, 1) as activo,
+                    COALESCE(clc.orden, csm.id) as orden,
+                    clc.rangos_json
+                FROM criterios_scoring_master csm
+                LEFT JOIN criterios_linea_credito clc 
+                    ON csm.id = clc.criterio_master_id AND clc.linea_credito_id = ?
+                WHERE csm.activo = 1
+                ORDER BY orden
+            """, (linea_id,))
         
         criterios = {}
         for row in cursor.fetchall():
@@ -940,7 +972,8 @@ def obtener_criterios_linea(linea_id):
                 "peso": row[5],
                 "activo": bool(row[6]),
                 "orden": row[7],
-                "rangos": rangos
+                "rangos": rangos,
+                "seccion": row[9] if tiene_seccion and len(row) > 9 else "Sin Categoría"
             }
         
         return criterios
@@ -1013,26 +1046,52 @@ def guardar_criterio_linea(linea_id, criterio_codigo, config):
 def guardar_criterios_completos_linea(linea_id, criterios):
     """
     Guarda todos los criterios de scoring para una línea.
-    Maneja criterios como objetos completos con nombre, peso y rangos.
+    Maneja criterios como objetos completos con nombre, peso, rangos y sección.
     
     Args:
         linea_id: ID de la línea de crédito
         criterios: Lista de criterios con formato:
-                   [{"codigo": "...", "nombre": "...", "peso": N, "rangos": [...]}]
+                   [{"codigo": "...", "nombre": "...", "peso": N, "seccion": "...", "rangos": [...]}]
         
     Returns:
         bool: True si se guardó exitosamente
     """
+    print(f"\n🔧 DEBUG guardar_criterios_completos_linea(linea_id={linea_id})")
+    print(f"   📥 Recibidos {len(criterios) if criterios else 0} criterios")
+    
+    # DEBUG: Show first 3 criterios received
+    if criterios:
+        for i, c in enumerate(criterios[:3]):
+            print(f"      [{i}] {c.get('codigo')}: seccion='{c.get('seccion', 'N/A')}', peso={c.get('peso')}")
+    
     conn = conectar_db()
     cursor = conn.cursor()
     
     try:
+        # Asegurar que existe la columna 'seccion' (migración automática)
+        try:
+            cursor.execute("ALTER TABLE criterios_linea_credito ADD COLUMN seccion TEXT DEFAULT 'Sin Categoría'")
+            conn.commit()
+            print("✅ Columna 'seccion' agregada a criterios_linea_credito")
+        except Exception:
+            # La columna ya existe, ignorar
+            pass
+        
+        # CRITICAL FIX: Eliminar criterios existentes antes de insertar los nuevos
+        # Esto asegura que criterios eliminados por el usuario no persistan
+        cursor.execute("""
+            DELETE FROM criterios_linea_credito WHERE linea_credito_id = ?
+        """, (linea_id,))
+        print(f"   🗑️ Criterios anteriores eliminados para línea {linea_id}")
+        
         # Primero, asegurar que existen los criterios en el catálogo master
         for i, criterio in enumerate(criterios):
             codigo = criterio.get("codigo", f"criterio_{i}")
             nombre = criterio.get("nombre", f"Criterio {i+1}")
             descripcion = criterio.get("descripcion", "")
             tipo_campo = criterio.get("tipo_campo", "numerico")
+            seccion = criterio.get("seccion", "Sin Categoría")
+            orden = criterio.get("orden", i)
             
             # Verificar si existe en master, si no, crearlo
             cursor.execute("SELECT id FROM criterios_scoring_master WHERE codigo = ?", (codigo,))
@@ -1055,18 +1114,19 @@ def guardar_criterios_completos_linea(linea_id, criterios):
                 """, (codigo, nombre, descripcion, tipo_campo))
                 master_id = cursor.lastrowid
             
-            # Guardar configuración del criterio para la línea
+            # Guardar configuración del criterio para la línea (con sección)
             rangos_json = json.dumps(criterio.get("rangos", []), ensure_ascii=False)
             
             cursor.execute("""
                 INSERT OR REPLACE INTO criterios_linea_credito
-                (criterio_master_id, linea_credito_id, peso, activo, orden, rangos_json, updated_at)
-                VALUES (?, ?, ?, 1, ?, ?, CURRENT_TIMESTAMP)
+                (criterio_master_id, linea_credito_id, peso, activo, orden, seccion, rangos_json, updated_at)
+                VALUES (?, ?, ?, 1, ?, ?, ?, CURRENT_TIMESTAMP)
             """, (
                 master_id,
                 linea_id,
                 criterio.get("peso", 5),
-                i,
+                orden,
+                seccion,
                 rangos_json
             ))
         

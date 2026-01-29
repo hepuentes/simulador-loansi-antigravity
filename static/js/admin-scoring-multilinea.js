@@ -17,6 +17,36 @@ let lineaSeleccionadaId = null;
 let lineaSeleccionadaNombre = "";
 let configScoringLinea = null;
 let lineasCreditoDisponibles = [];
+// Mapa de colores personalizados de sección (se guardará en config si es posible)
+let customSectionColors = {};
+
+// Colores disponibles para secciones
+const SECCION_COLORS = {
+  // Default mappings
+  "Probabilidad de Pago": "purple",
+  "Análisis de Ingresos": "green",
+  "Análisis de Endeudamiento": "blue",
+  "Historial Crediticio": "orange",
+  "Comportamiento de Pago": "cyan",
+  "Análisis Sectorial": "teal",
+  "Verificación Documental": "red",
+  "Información Personal": "indigo",
+  "Otros Criterios": "secondary"
+};
+
+const AVAILABLE_COLORS = [
+  { value: 'primary', label: 'Azul (Primary)' },
+  { value: 'secondary', label: 'Gris (Secondary)' },
+  { value: 'success', label: 'Verde (Success)' },
+  { value: 'danger', label: 'Rojo (Danger)' },
+  { value: 'warning', label: 'Amarillo (Warning)' },
+  { value: 'info', label: 'Celeste (Info)' },
+  { value: 'dark', label: 'Oscuro (Dark)' },
+  { value: 'purple', label: 'Morado' },
+  { value: 'indigo', label: 'Indigo' },
+  { value: 'teal', label: 'Verde Azulado' },
+  { value: 'orange', label: 'Naranja' }
+];
 
 // ============================================================================
 // INICIALIZACIÓN
@@ -29,15 +59,35 @@ document.addEventListener("DOMContentLoaded", function () {
     console.log("🔄 Inicializando scoring multi-línea...");
     // Inicializar selector de línea
     initSelectorLineaCredito();
+    // Inyectar estilos para colores custom si faltan
+    injectCustomColorStyles();
   }
 });
+
+function injectCustomColorStyles() {
+  const styleId = 'custom-section-colors-style';
+  if (!document.getElementById(styleId)) {
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.textContent = `
+            .bg-purple-subtle { background-color: #e0cffc !important; }
+            .bg-indigo-subtle { background-color: #cff4fc !important; } /* Bootstrap info-like */
+            .bg-teal-subtle { background-color: #20c997 !important; opacity: 0.2; }
+            .text-purple-emphasis { color: #6f42c1 !important; }
+            .text-teal-emphasis { color: #0ca678 !important; }
+            .border-purple { border-color: #6f42c1 !important; }
+            .border-teal { border-color: #20c997 !important; }
+        `;
+    document.head.appendChild(style);
+  }
+}
 
 /**
  * Inicializa el selector de línea de crédito
  */
 async function initSelectorLineaCredito() {
   console.log("🔄 Cargando líneas de crédito para scoring...");
-  
+
   try {
     const response = await fetch("/api/scoring/lineas-credito", {
       method: "GET",
@@ -82,7 +132,7 @@ function renderSelectorLinea(lineas) {
         <div class="card mb-4 border-primary">
             <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                 <span><i class="bi bi-box-seam me-2"></i>Línea de Crédito</span>
-                <span class="badge bg-light text-primary fw-bold border border-primary" id="badgeLineaActual" style="font-size: 0.9rem;">Sin seleccionar</span>
+                <span class="badge bg-light fw-bold border border-primary" id="badgeLineaActual" style="font-size: 0.9rem; color: #000 !important;">Sin seleccionar</span>
             </div>
             <div class="card-body">
                 <div class="row align-items-end">
@@ -92,21 +142,18 @@ function renderSelectorLinea(lineas) {
                                 onchange="onCambioLineaCredito(this.value)">
                             <option value="">-- Seleccione una línea --</option>
                             ${lineas
-                              .map(
-                                (l) => `
-                                <option value="${l.id}" data-nombre="${
-                                  l.nombre
-                                }">
-                                    ${l.nombre} ${
-                                  l.tiene_config_scoring ? "✓" : "⚠️"
-                                }
-                                    (Score min: ${
-                                      l.score_datacredito_minimo || "N/A"
-                                    })
+      .map(
+        (l) => `
+                                <option value="${l.id}" data-nombre="${l.nombre
+          }">
+                                    ${l.nombre} ${l.tiene_config_scoring ? "✓" : "⚠️"
+          }
+                                    (Score min: ${l.score_datacredito_minimo || "N/A"
+          })
                                 </option>
                             `
-                              )
-                              .join("")}
+      )
+      .join("")}
                         </select>
                     </div>
                     <div class="col-md-3 mb-2 mb-md-0">
@@ -169,7 +216,7 @@ async function onCambioLineaCredito(lineaId) {
  */
 async function seleccionarLineaCredito(lineaId, nombreLinea) {
   console.log(`🔄 Cargando configuración de línea ${nombreLinea} (ID: ${lineaId})...`);
-  
+
   try {
     lineaSeleccionadaId = lineaId;
     lineaSeleccionadaNombre = nombreLinea;
@@ -185,7 +232,7 @@ async function seleccionarLineaCredito(lineaId, nombreLinea) {
     if (badge) {
       badge.textContent = nombreLinea;
     }
-    
+
     // Actualizar badges en las pestañas
     const badgeNiveles = document.getElementById("badgeLineaNiveles");
     const badgeFactores = document.getElementById("badgeLineaFactores");
@@ -206,6 +253,22 @@ async function seleccionarLineaCredito(lineaId, nombreLinea) {
     if (data.success) {
       console.log(`✅ Configuración de ${nombreLinea} cargada correctamente`);
       configScoringLinea = data.config;
+
+      // DEBUG: Log loaded criterios
+      console.log("🔍 DEBUG seleccionarLineaCredito: criterios recibidos");
+      console.log("   📥 Total:", data.config.criterios?.length || 0);
+      if (data.config.criterios) {
+        // Restaurar colores personalizados desde los criterios (persistencia)
+        data.config.criterios.forEach(c => {
+          if (c.seccion && c.color_context) {
+            customSectionColors[c.seccion] = c.color_context;
+          }
+        });
+
+        data.config.criterios.slice(0, 3).forEach((c, i) => {
+          console.log(`      [${i}] ${c.codigo}: seccion='${c.seccion}', peso=${c.peso}`);
+        });
+      }
 
       // Actualizar info de línea
       actualizarInfoLinea(data.config);
@@ -258,15 +321,13 @@ function actualizarInfoLinea(config) {
   }
 
   if (numNivelesInfo) {
-    numNivelesInfo.textContent = `${
-      config.niveles_riesgo?.length || 0
-    } niveles`;
+    numNivelesInfo.textContent = `${config.niveles_riesgo?.length || 0
+      } niveles`;
   }
 
   if (numFactoresInfo) {
-    numFactoresInfo.textContent = `${
-      config.factores_rechazo?.length || 0
-    } factores`;
+    numFactoresInfo.textContent = `${config.factores_rechazo?.length || 0
+      } factores`;
   }
 }
 
@@ -283,11 +344,7 @@ function renderNivelesRiesgoLinea(niveles) {
 
   // Header con botón agregar
   let html = `
-    <div class="mb-3 d-flex justify-content-between align-items-center">
-      <h6 class="mb-0">
-        <i class="bi bi-bar-chart-steps me-2"></i>Niveles de Riesgo y Tasas Diferenciadas
-        <span class="badge bg-primary text-white ms-2">${lineaSeleccionadaNombre}</span>
-      </h6>
+    <div class="mb-3 d-flex justify-content-end align-items-center">
       <button type="button" class="btn btn-sm btn-outline-success" onclick="agregarNivelRiesgoLinea()">
         <i class="bi bi-plus-lg me-1"></i>Agregar nivel
       </button>
@@ -314,19 +371,18 @@ function renderNivelesRiesgoLinea(niveles) {
   niveles.forEach((nivel, index) => {
     html += `
             <div class="col-md-4 mb-3">
-                <div class="card h-100" style="border: 2px solid ${
-                  nivel.color
-                };">
-                    <div class="card-header d-flex justify-content-between align-items-center" style="background-color: ${
-                      nivel.color
-                    }20;">
+                <div class="card h-100" style="border: 2px solid ${nivel.color
+      };">
+                    <div class="card-header d-flex justify-content-between align-items-center" style="background-color: ${nivel.color
+      };">
                         <input type="text" class="form-control form-control-sm fw-bold flex-grow-1 me-2"
                                value="${nivel.nombre}"
                                onchange="actualizarNivelLinea(${index}, 'nombre', this.value)"
                                style="background: transparent; border: none;">
-                        <button type="button" class="btn btn-sm btn-outline-danger" 
-                                onclick="eliminarNivelRiesgoLinea(${index})" title="Eliminar nivel">
-                            <i class="bi bi-trash"></i>
+                        <button type="button" class="btn btn-sm btn-delete-nivel" 
+                                onclick="eliminarNivelRiesgoLinea(${index})" title="Eliminar nivel"
+                                style="background-color: white; border: 1px solid #dee2e6;">
+                            <i class="bi bi-trash" style="color: #000; font-size: 1.1rem;"></i>
                         </button>
                     </div>
                     <div class="card-body">
@@ -334,17 +390,15 @@ function renderNivelesRiesgoLinea(niveles) {
                             <div class="col-6">
                                 <label class="form-label small">Score Mín</label>
                                 <input type="number" class="form-control form-control-sm"
-                                       value="${
-                                         nivel.min
-                                       }" min="0" max="100" step="0.1"
+                                       value="${nivel.min
+      }" min="0" max="100" step="0.1"
                                        onchange="actualizarNivelLinea(${index}, 'min', this.value)">
                             </div>
                             <div class="col-6">
                                 <label class="form-label small">Score Máx</label>
                                 <input type="number" class="form-control form-control-sm"
-                                       value="${
-                                         nivel.max
-                                       }" min="0" max="100" step="0.1"
+                                       value="${nivel.max
+      }" min="0" max="100" step="0.1"
                                        onchange="actualizarNivelLinea(${index}, 'max', this.value)">
                             </div>
                         </div>
@@ -377,8 +431,8 @@ function renderNivelesRiesgoLinea(niveles) {
                             <div class="input-group input-group-sm">
                                 <input type="number" class="form-control" step="0.01"
                                        value="${(
-                                         nivel.aval_porcentaje * 100
-                                       ).toFixed(2)}"
+        nivel.aval_porcentaje * 100
+      ).toFixed(2)}"
                                        onchange="actualizarNivelLinea(${index}, 'aval_porcentaje', this.value / 100)">
                                 <span class="input-group-text">%</span>
                             </div>
@@ -437,7 +491,7 @@ function actualizarNivelLinea(index, campo, valor) {
   if (campo === "tasa_ea") {
     const tasaEA = valor / 100; // Convertir a decimal
     // Fórmula: tasa_nominal_mensual = ((1 + tasa_ea)^(1/12) - 1) * 100
-    const tasaNominalMensual = (Math.pow(1 + tasaEA, 1/12) - 1) * 100;
+    const tasaNominalMensual = (Math.pow(1 + tasaEA, 1 / 12) - 1) * 100;
     configScoringLinea.niveles_riesgo[index].tasa_nominal_mensual = parseFloat(tasaNominalMensual.toFixed(4));
     // Re-renderizar para mostrar el nuevo valor
     renderNivelesRiesgoLinea(configScoringLinea.niveles_riesgo);
@@ -637,30 +691,24 @@ function renderFactoresRechazoLinea(factores) {
                 <tr data-factor-id="${factor.id || index}">
                     <td>
                         <input type="text" class="form-control form-control-sm"
-                               value="${
-                                 factor.criterio_nombre || factor.criterio
-                               }"
+                               value="${factor.criterio_nombre || factor.criterio
+        }"
                                onchange="actualizarFactorLinea(${index}, 'criterio_nombre', this.value)"
                                data-criterio-key="${factor.criterio}">
                     </td>
                     <td>
                         <select class="form-select form-select-sm"
                                 onchange="actualizarFactorLinea(${index}, 'operador', this.value)">
-                            <option value="<" ${
-                              factor.operador === "<" ? "selected" : ""
-                            }>< menor que</option>
-                            <option value="<=" ${
-                              factor.operador === "<=" ? "selected" : ""
-                            }>≤ menor o igual</option>
-                            <option value=">" ${
-                              factor.operador === ">" ? "selected" : ""
-                            }>> mayor que</option>
-                            <option value=">=" ${
-                              factor.operador === ">=" ? "selected" : ""
-                            }>≥ mayor o igual</option>
-                            <option value="=" ${
-                              factor.operador === "=" ? "selected" : ""
-                            }}>= igual a</option>
+                            <option value="<" ${factor.operador === "<" ? "selected" : ""
+        }>< menor que</option>
+                            <option value="<=" ${factor.operador === "<=" ? "selected" : ""
+        }>≤ menor o igual</option>
+                            <option value=">" ${factor.operador === ">" ? "selected" : ""
+        }>> mayor que</option>
+                            <option value=">=" ${factor.operador === ">=" ? "selected" : ""
+        }>≥ mayor o igual</option>
+                            <option value="=" ${factor.operador === "=" ? "selected" : ""
+        }}>= igual a</option>
                         </select>
                     </td>
                     <td>
@@ -795,11 +843,11 @@ async function guardarFactoresRechazoLinea() {
  */
 function agregarFactorRechazoLinea() {
   if (!configScoringLinea) return;
-  
+
   if (!configScoringLinea.factores_rechazo) {
     configScoringLinea.factores_rechazo = [];
   }
-  
+
   configScoringLinea.factores_rechazo.push({
     criterio_nombre: "Nuevo Factor",
     criterio: "nuevo_factor",
@@ -807,7 +855,7 @@ function agregarFactorRechazoLinea() {
     valor: 0,
     mensaje: "Mensaje de rechazo"
   });
-  
+
   renderAprobacionLinea(configScoringLinea.config_general, configScoringLinea.factores_rechazo);
   mostrarAlertaScoring("Factor agregado. Recuerde guardar los cambios.", "info");
 }
@@ -817,11 +865,11 @@ function agregarFactorRechazoLinea() {
  */
 function actualizarFactorLinea(index, campo, valor) {
   if (!configScoringLinea || !configScoringLinea.factores_rechazo) return;
-  
+
   if (campo === 'valor') {
     valor = parseFloat(valor);
   }
-  
+
   configScoringLinea.factores_rechazo[index][campo] = valor;
 }
 
@@ -830,7 +878,7 @@ function actualizarFactorLinea(index, campo, valor) {
  */
 function eliminarFactorLinea(index) {
   if (!configScoringLinea || !configScoringLinea.factores_rechazo) return;
-  
+
   if (confirm("¿Está seguro de eliminar este factor de rechazo?")) {
     configScoringLinea.factores_rechazo.splice(index, 1);
     renderAprobacionLinea(configScoringLinea.config_general, configScoringLinea.factores_rechazo);
@@ -1076,6 +1124,9 @@ async function guardarAprobacionLinea() {
 
     if (dataConfig.success && dataFactores.success) {
       mostrarAlertaScoring("Configuración de aprobación guardada exitosamente", "success");
+      markChangesSaved(); // Resetear estado de guardado
+      unsavedChanges = false;
+      updateSaveButtonState();
     } else {
       mostrarAlertaScoring(`Error: ${dataConfig.error || dataFactores.error}`, "danger");
     }
@@ -1086,15 +1137,243 @@ async function guardarAprobacionLinea() {
 }
 
 // ============================================================================
-// RENDERIZADO DE CRITERIOS DE SCORING
+// RENDERIZADO DE CRITERIOS DE SCORING CON SECCIONES Y DRAG & DROP
 // ============================================================================
 
+// Variable global para trackear estado de secciones colapsadas
+let seccionesColapsadas = {};
+// Variable para trackear todas las secciones activas (incluyendo vacías)
+let seccionesActivas = new Set(["Probabilidad de Pago", "Capacidad de Pago", "Historial Crediticio", "Información Personal", "Sin Categoría"]);
+// Variable para trackear cambios sin guardar
+let unsavedChanges = false;
+
+// Colores por sección
+
+
+// Inyectar estilos CSS dinámicamente
+(function injectScoringStyles() {
+  const styleId = 'scoring-ui-styles';
+  if (!document.getElementById(styleId)) {
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.textContent = `
+      .btn-save-unsaved {
+        animation: pulse-primary 2s infinite;
+        box-shadow: 0 0 0 0 rgba(13, 110, 253, 0.7);
+      }
+      @keyframes pulse-primary {
+        0% { box-shadow: 0 0 0 0 rgba(13, 110, 253, 0.7); }
+        70% { box-shadow: 0 0 0 10px rgba(13, 110, 253, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(13, 110, 253, 0); }
+      }
+      .seccion-header-custom {
+        transition: background-color 0.3s ease;
+      }
+      .seccion-header-custom:hover {
+        filter: brightness(0.98);
+      }
+    `;
+    document.head.appendChild(style);
+  }
+})();
+
 /**
- * Renderiza los criterios de scoring para la línea
+ * Marca la configuración como "con cambios sin guardar"
+ */
+function markUnsavedChanges() {
+  unsavedChanges = true;
+  updateSaveButtonState();
+}
+
+/**
+ * Actualiza el estado visual del botón guardar
+ */
+function updateSaveButtonState() {
+  const btn = document.getElementById('btnGuardarScoring');
+  if (btn) {
+    if (unsavedChanges) {
+      btn.innerHTML = '<i class="bi bi-save me-1"></i>Guardar Cambios *';
+      btn.classList.remove('btn-primary');
+      btn.classList.add('btn-warning', 'btn-save-unsaved', 'text-dark', 'fw-bold');
+    } else {
+      btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Guardar Criterios';
+      btn.classList.add('btn-primary');
+      btn.classList.remove('btn-warning', 'btn-save-unsaved', 'text-dark', 'fw-bold');
+    }
+
+    // Actualizar botón cancelar
+    const btnCancel = document.getElementById('btnCancelarScoring');
+    if (btnCancel) {
+      btnCancel.disabled = !unsavedChanges;
+      if (unsavedChanges) {
+        btnCancel.classList.remove('btn-outline-secondary');
+        btnCancel.classList.add('btn-outline-danger');
+        btnCancel.onclick = function () {
+          if (confirm('¿Descartar cambios no guardados?')) {
+            refrescarConfigLinea();
+          }
+        };
+      } else {
+        btnCancel.classList.add('btn-outline-secondary');
+        btnCancel.classList.remove('btn-outline-danger');
+        btnCancel.onclick = null;
+      }
+    }
+  }
+}
+
+/**
+ * Guarda los criterios de scoring de la línea actual
+ */
+async function guardarConfiguracionScoringLinea() {
+  if (!lineaSeleccionadaId || !configScoringLinea) {
+    mostrarAlertaScoring("No hay línea seleccionada", "warning");
+    return;
+  }
+
+  const criterios = configScoringLinea.criterios || [];
+
+  // Adjuntar colores de sección a cada criterio para persistencia
+  criterios.forEach(c => {
+    if (c.seccion && customSectionColors[c.seccion]) {
+      c.color_context = customSectionColors[c.seccion];
+    }
+  });
+
+  // DEBUG: Log criterios being sent
+  console.log("🔧 DEBUG guardarConfiguracionScoringLinea");
+  console.log("   📤 Enviando", criterios.length, "criterios");
+  criterios.slice(0, 3).forEach((c, i) => {
+    console.log(`      [${i}] ${c.codigo}: seccion='${c.seccion}', peso=${c.peso}`);
+  });
+
+  // Validar suma de pesos = 100%
+  const sumaPesos = criterios.reduce((sum, c) => sum + (parseFloat(c.peso) || 0), 0);
+  if (Math.abs(sumaPesos - 100) > 0.1) {
+    mostrarAlertaScoring(`La suma de pesos debe ser 100%. Actualmente: ${sumaPesos.toFixed(1)}%`, "warning");
+    return;
+  }
+
+  try {
+    const response = await fetch(`/api/scoring/linea/${lineaSeleccionadaId}/criterios`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCSRFToken(),
+      },
+      body: JSON.stringify({ criterios }),
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      mostrarAlertaScoring("Criterios guardados correctamente", "success");
+      unsavedChanges = false;
+      updateSaveButtonState();
+    } else {
+      mostrarAlertaScoring(data.error || "Error al guardar criterios", "danger");
+    }
+  } catch (error) {
+    console.error("Error guardando criterios:", error);
+    mostrarAlertaScoring("Error de conexión al guardar", "danger");
+  }
+}
+
+/**
+ * Expande o colapsa todos los acordeones de criterios
+ */
+function toggleAllCriteriosAccordions() {
+  const collapses = document.querySelectorAll('.accordion-collapse[id^="collapse-crit-"]');
+  const allOpen = Array.from(collapses).every(el => el.classList.contains('show'));
+
+  collapses.forEach(el => {
+    const btn = document.querySelector(`button[data-bs-target="#${el.id}"]`);
+    if (allOpen) {
+      el.classList.remove('show');
+      if (btn) {
+        btn.classList.add('collapsed');
+        btn.setAttribute('aria-expanded', 'false');
+      }
+    } else {
+      el.classList.add('show');
+      if (btn) {
+        btn.classList.remove('collapsed');
+        btn.setAttribute('aria-expanded', 'true');
+      }
+    }
+  });
+
+  // Actualizar texto del botón
+  const toggleBtn = document.getElementById('btnToggleAllAccordions');
+  if (toggleBtn) {
+    if (allOpen) {
+      toggleBtn.innerHTML = '<i class="bi bi-arrows-expand me-1"></i>Expandir';
+    } else {
+      toggleBtn.innerHTML = '<i class="bi bi-arrows-collapse me-1"></i>Colapsar';
+    }
+  }
+}
+
+/**
+ * Expande o colapsa un acordeón de criterio individual
+ */
+function toggleCriterioAccordion(collapseId) {
+  console.log('🔧 toggleCriterioAccordion called with:', collapseId);
+
+  const el = document.getElementById(collapseId);
+  if (!el) {
+    console.error('❌ Element not found:', collapseId);
+    return;
+  }
+
+  const isOpen = el.classList.contains('show');
+  const chevron = document.getElementById(`chevron-${collapseId}`);
+  const btn = el.closest('.accordion-item')?.querySelector('.criterio-toggle-btn');
+
+  console.log('📊 Current state:', { isOpen, hasChevron: !!chevron, hasBtn: !!btn });
+
+  if (isOpen) {
+    console.log('📥 Collapsing...');
+    el.classList.remove('show');
+    if (btn) {
+      btn.setAttribute('aria-expanded', 'false');
+    }
+    if (chevron) {
+      chevron.classList.remove('bi-chevron-down');
+      chevron.classList.add('bi-chevron-right');
+    }
+  } else {
+    console.log('📤 Expanding...');
+    el.classList.add('show');
+    if (btn) {
+      btn.setAttribute('aria-expanded', 'true');
+    }
+    if (chevron) {
+      chevron.classList.remove('bi-chevron-right');
+      chevron.classList.add('bi-chevron-down');
+    }
+  }
+  console.log('✅ toggleCriterioAccordion done');
+}
+
+/**
+ * Renderiza los criterios de scoring agrupados por sección con drag & drop
+ */
+/**
+ * Renderiza los criterios de scoring agrupados por sección con drag & drop
  */
 function renderCriteriosLinea(criterios) {
   const container = document.getElementById("criteriosLineaContainer");
   if (!container) return;
+
+  // CAPTURAR ESTADO: Guardar qué acordeones DE CRITERIOS están abiertos
+  const openItems = [];
+  document.querySelectorAll('.accordion-collapse.show').forEach(el => {
+    // Solo guardar los de nivel criterio (que tienen id collapse-crit-...)
+    if (el.id && el.id.startsWith('collapse-crit-')) {
+      openItems.push(el.id);
+    }
+  });
 
   // Convertir objeto a array si es necesario
   let criteriosArray = [];
@@ -1109,6 +1388,47 @@ function renderCriteriosLinea(criterios) {
     }
   }
 
+  // Asegurar que cada criterio tenga seccion y orden
+  criteriosArray.forEach((c, i) => {
+    if (!c.seccion) c.seccion = "Sin Categoría";
+    if (c.orden === undefined) c.orden = i;
+    seccionesActivas.add(c.seccion);
+  });
+
+  // Ordenar por orden
+  criteriosArray.sort((a, b) => (a.orden || 0) - (b.orden || 0));
+
+  // Agrupar criterios por sección
+  const seccionesMap = {};
+  criteriosArray.forEach(c => {
+    const sec = c.seccion || "Sin Categoría";
+    if (!seccionesMap[sec]) {
+      seccionesMap[sec] = [];
+    }
+    seccionesMap[sec].push(c);
+  });
+
+  // Obtener lista final de secciones (Unión de mapa y set global)
+  seccionesActivas.forEach(sec => {
+    if (!seccionesMap[sec]) seccionesMap[sec] = [];
+  });
+
+  // Ordenar secciones
+  const ordenPredefinido = ["Probabilidad de Pago", "Capacidad de Pago", "Historial Crediticio", "Información Personal"];
+  const seccionesOrdenadas = Object.keys(seccionesMap).sort((a, b) => {
+    if (a === "Sin Categoría") return 1;
+    if (b === "Sin Categoría") return -1;
+
+    const idxA = ordenPredefinido.indexOf(a);
+    const idxB = ordenPredefinido.indexOf(b);
+
+    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+    if (idxA !== -1) return -1;
+    if (idxB !== -1) return 1;
+
+    return a.localeCompare(b);
+  });
+
   // Calcular suma de pesos
   const sumaPesos = criteriosArray.reduce((sum, c) => sum + (parseFloat(c.peso) || 0), 0);
 
@@ -1119,152 +1439,703 @@ function renderCriteriosLinea(criterios) {
           <i class="bi bi-list-check me-2"></i>Criterios de Evaluación
           <span class="badge bg-primary ms-2">${lineaSeleccionadaNombre}</span>
         </h5>
-        <small class="text-muted">Los criterios determinan el puntaje del cliente. Los pesos deben sumar 100%.</small>
+        <small class="text-muted">Arrastra para reordenar secciones y criterios.</small>
       </div>
-      <div>
-        <span class="badge ${sumaPesos === 100 ? 'bg-success' : 'bg-danger'} fs-6">
-          Suma de pesos: ${sumaPesos.toFixed(1)}%
+      <div class="d-flex align-items-center gap-2">
+        <span class="badge ${Math.abs(sumaPesos - 100) < 0.1 ? 'bg-success' : 'bg-danger'} fs-6">
+          Suma: ${sumaPesos.toFixed(1)}%
         </span>
-        <button type="button" class="btn btn-success ms-2" onclick="agregarCriterioLinea()">
+        <button type="button" class="btn btn-outline-primary btn-sm" onclick="agregarSeccionModal()">
+          <i class="bi bi-folder-plus me-1"></i>Nueva Sección
+        </button>
+        <button type="button" class="btn btn-success btn-sm" onclick="agregarCriterioLinea()">
           <i class="bi bi-plus-lg me-1"></i>Agregar Criterio
         </button>
       </div>
     </div>
     
-    ${sumaPesos !== 100 ? `
-      <div class="alert alert-warning">
+    ${Math.abs(sumaPesos - 100) > 0.1 ? `
+      <div class="alert alert-warning py-2 mb-3 shadow-sm border-warning">
         <i class="bi bi-exclamation-triangle me-2"></i>
-        <strong>Atención:</strong> Los pesos de los criterios deben sumar exactamente 100%. 
-        Actualmente suman ${sumaPesos.toFixed(1)}%.
+        Los pesos deben sumar 100%. Actualmente: <strong>${sumaPesos.toFixed(1)}%</strong>
       </div>
     ` : ''}
   `;
 
-  if (criteriosArray.length === 0) {
+  if (criteriosArray.length === 0 && seccionesOrdenadas.length === 0) {
     html += `
-      <div class="alert alert-info">
-        <i class="bi bi-info-circle me-2"></i>
-        No hay criterios de scoring configurados para esta línea.
-        <br><br>
-        <button type="button" class="btn btn-primary" onclick="crearCriteriosPorDefecto()">
-          <i class="bi bi-magic me-1"></i>Crear criterios por defecto
-        </button>
+      <div class="alert alert-info py-4 text-center">
+        <i class="bi bi-info-circle fs-4 d-block mb-2"></i>
+        No hay criterios configurados.
+        <div class="mt-2">
+          <button type="button" class="btn btn-primary btn-sm" onclick="crearCriteriosPorDefecto()">
+            <i class="bi bi-magic me-1"></i>Crear por defecto
+          </button>
+        </div>
       </div>
     `;
   } else {
-    // Mostrar criterios en acordeón
-    html += `<div class="accordion" id="accordionCriterios">`;
-    
-    criteriosArray.forEach((criterio, index) => {
-      const rangos = criterio.rangos || [];
-      const tieneRangos = rangos.length > 0;
-      
+    // Contenedor de secciones (sortable)
+    html += `<div id="seccionesContainer" class="secciones-sortable">`;
+
+    seccionesOrdenadas.forEach((seccion, secIndex) => {
+      const criteriosSeccion = seccionesMap[seccion] || [];
+      const colapsada = seccionesColapsadas[seccion] || false;
+      const seccionId = `seccion-${secIndex}`;
+      // Usar color personalizado o default
+      const colorContext = customSectionColors[seccion] || SECCION_COLORS[seccion] || "secondary";
+
+      // Estilo de encabezado basado en el color. Soporte para clases custom o bootstrap
+      const headerClass = `bg-${colorContext}-subtle text-${colorContext}-emphasis`;
+      const btnLinkClass = `text-${colorContext}-emphasis`;
+
       html += `
-        <div class="accordion-item">
-          <h2 class="accordion-header">
-            <button class="accordion-button ${index > 0 ? 'collapsed' : ''}" type="button" 
-                    data-bs-toggle="collapse" data-bs-target="#criterio${index}">
-              <div class="d-flex justify-content-between align-items-center w-100 me-3">
-                <span>
-                  <span class="badge bg-primary me-2">${criterio.peso || 0}%</span>
-                  <strong>${criterio.nombre || criterio.codigo}</strong>
-                  ${criterio.descripcion ? `<small class="text-muted ms-2">- ${criterio.descripcion}</small>` : ''}
-                </span>
-                <span>
-                  <span class="badge ${tieneRangos ? 'bg-success' : 'bg-secondary'}">${rangos.length} rangos</span>
-                </span>
-              </div>
-            </button>
-          </h2>
-          <div id="criterio${index}" class="accordion-collapse collapse ${index === 0 ? 'show' : ''}">
-            <div class="accordion-body">
-              <div class="row mb-3">
-                <div class="col-md-4">
-                  <label class="form-label">Nombre</label>
-                  <input type="text" class="form-control" value="${criterio.nombre || ''}"
-                         onchange="actualizarCriterioLinea(${index}, 'nombre', this.value)">
-                </div>
-                <div class="col-md-2">
-                  <label class="form-label">Peso (%)</label>
-                  <input type="number" class="form-control" value="${criterio.peso || 0}" min="0" max="100"
-                         onchange="actualizarCriterioLinea(${index}, 'peso', this.value)">
-                </div>
-                <div class="col-md-4">
-                  <label class="form-label">Descripción</label>
-                  <input type="text" class="form-control" value="${criterio.descripcion || ''}"
-                         onchange="actualizarCriterioLinea(${index}, 'descripcion', this.value)">
-                </div>
-                <div class="col-md-2 d-flex align-items-end">
-                  <button type="button" class="btn btn-outline-danger w-100" onclick="eliminarCriterioLinea(${index})">
-                    <i class="bi bi-trash me-1"></i>Eliminar
-                  </button>
-                </div>
-              </div>
-              
-              <h6><i class="bi bi-rulers me-2"></i>Rangos de Puntuación</h6>
-              ${tieneRangos ? `
-                <div class="table-responsive">
-                  <table class="table table-sm table-bordered">
-                    <thead class="table-primary">
-                      <tr>
-                        <th>Mínimo</th>
-                        <th>Máximo</th>
-                        <th>Puntos</th>
-                        <th>Descripción</th>
-                        <th class="text-center">Acciones</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      ${rangos.map((r, ri) => `
-                        <tr>
-                          <td><input type="number" class="form-control form-control-sm" value="${r.min}" 
-                                     onchange="actualizarRangoCriterio(${index}, ${ri}, 'min', this.value)"></td>
-                          <td><input type="number" class="form-control form-control-sm" value="${r.max}"
-                                     onchange="actualizarRangoCriterio(${index}, ${ri}, 'max', this.value)"></td>
-                          <td><input type="number" class="form-control form-control-sm" value="${r.puntos}"
-                                     onchange="actualizarRangoCriterio(${index}, ${ri}, 'puntos', this.value)"></td>
-                          <td><input type="text" class="form-control form-control-sm" value="${r.descripcion || ''}"
-                                     onchange="actualizarRangoCriterio(${index}, ${ri}, 'descripcion', this.value)"></td>
-                          <td class="text-center">
-                            <button type="button" class="btn btn-sm btn-outline-danger" 
-                                    onclick="eliminarRangoCriterio(${index}, ${ri})">
-                              <i class="bi bi-trash"></i>
-                            </button>
-                          </td>
-                        </tr>
-                      `).join('')}
-                    </tbody>
-                  </table>
-                </div>
-              ` : `
-                <div class="text-center text-muted py-2">
-                  <small>No hay rangos configurados</small>
-                </div>
-              `}
-              <button type="button" class="btn btn-sm btn-outline-success" onclick="agregarRangoCriterio(${index})">
-                <i class="bi bi-plus me-1"></i>Agregar Rango
+        <div class="card mb-3 seccion-card shadow-sm border-${colorContext} bg-opacity-10" data-seccion="${seccion}">
+          <div class="card-header ${headerClass} d-flex justify-content-between align-items-center py-2 seccion-header-custom">
+            <div class="d-flex align-items-center flex-grow-1">
+              <span class="seccion-handle me-2" style="cursor: grab; opacity: 0.6;" title="Arrastrar sección">
+                <i class="bi bi-grip-vertical fs-5"></i>
+              </span>
+              <button class="btn btn-link text-decoration-none p-0 ${btnLinkClass} d-flex align-items-center fw-bold text-start flex-grow-1" 
+                      onclick="toggleSeccion('${seccion}', '${seccionId}')" type="button">
+                <i class="bi ${colapsada ? 'bi-chevron-right' : 'bi-chevron-down'} me-2" id="icon-${seccionId}"></i>
+                <span>${seccion}</span>
+                <span class="badge bg-${colorContext} text-dark ms-2 rounded-pill">${criteriosSeccion.length}</span>
               </button>
             </div>
+            <div class="btn-group btn-group-sm bg-white rounded shadow-sm">
+              <button type="button" class="btn btn-outline-secondary border-0" onclick="editarSeccion('${seccion}')" title="Editar Nombre y Color">
+                <i class="bi bi-pencil"></i>
+              </button>
+              ${seccion !== "Sin Categoría" ? `
+                <button type="button" class="btn btn-outline-danger border-0" onclick="eliminarSeccionLinea('${seccion}')" title="Eliminar sección">
+                  <i class="bi bi-trash"></i>
+                </button>
+              ` : ''}
+            </div>
+          </div>
+          <div class="card-body p-0 ${colapsada ? 'd-none' : ''}" id="body-${seccionId}">
+            <ul class="list-group list-group-flush criterios-list" data-seccion="${seccion}" style="min-height: 50px;">
+              ${criteriosSeccion.map((criterio, idx) => renderCriterioItemAccordion(criterio, idx, seccion)).join('')}
+            </ul>
+            ${criteriosSeccion.length === 0 ? `
+                <div class="text-center text-muted py-4 small bg-light bg-opacity-50">
+                    <i class="bi bi-arrow-down-up me-1"></i>Arrastra criterios aquí
+                </div>
+            ` : ''}
           </div>
         </div>
       `;
     });
-    
+
     html += `</div>`;
   }
 
   html += `
-    <div class="text-end mt-3">
-      <button type="button" class="btn btn-outline-secondary me-2" onclick="refrescarConfigLinea()">
-        <i class="bi bi-arrow-clockwise me-1"></i>Cancelar cambios
+    <div class="text-end mt-4 sticky-bottom bg-white p-3 border-top shadow-lg rounded-top" style="z-index: 1020; bottom: 0;">
+      <button id="btnCancelarScoring" class="btn btn-outline-secondary" disabled>
+        <i class="bi bi-x-circle me-1"></i>Cancelar Cambios
       </button>
-      <button type="button" class="btn btn-primary" onclick="guardarCriteriosLinea()">
+      <button id="btnGuardarScoring" class="btn btn-primary ms-2" onclick="guardarConfiguracionScoringLinea()">
         <i class="bi bi-check-lg me-1"></i>Guardar Criterios
       </button>
     </div>
   `;
 
   container.innerHTML = html;
+
+  // Actualizar estado del botón inmediatamente
+  updateSaveButtonState();
+
+  // Restaurar estado de acordeones de CRITERIOS abiertos
+  if (openItems.length > 0) {
+    openItems.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        // Use Bootstrap's collapse methods
+        const bsCollapse = bootstrap.Collapse.getInstance(el);
+        if (bsCollapse) {
+          bsCollapse.show();
+        } else {
+          new bootstrap.Collapse(el, { toggle: false }).show();
+        }
+        // Actualizar botón y chevron del acordeón
+        const accordionItem = el.closest('.accordion-item');
+        if (accordionItem) {
+          const btn = accordionItem.querySelector('.criterio-toggle-btn');
+          if (btn) {
+            btn.setAttribute('aria-expanded', 'true');
+          }
+          const chevron = document.getElementById(`chevron-${id}`);
+          if (chevron) {
+            chevron.classList.remove('bi-chevron-right');
+            chevron.classList.add('bi-chevron-down');
+          }
+        }
+      }
+    });
+  }
+
+  // Inicializar drag & drop después de renderizar
+  initSortableSecciones();
+  initSortableCriterios();
+}
+
+/**
+ * Renderiza un item de criterio con Acordeón completo para edición (Restaurado)
+ */
+function renderCriterioItemAccordion(criterio, idx, seccion) {
+  const rangos = criterio.rangos || [];
+  const tieneRangos = rangos.length > 0;
+  const collapseId = `collapse-crit-${criterio.codigo}`;
+
+  return `
+    <li class="list-group-item criterio-item p-0 border-bottom" 
+        data-codigo="${criterio.codigo}" data-seccion="${seccion}">
+        
+      <div class="accordion-item border-0">
+        <h2 class="accordion-header" id="heading-${collapseId}">
+          <div class="d-flex align-items-center w-100 px-2 py-1">
+            <span class="criterio-handle me-2" style="cursor: grab;" title="Arrastrar criterio">
+               <i class="bi bi-grip-vertical text-muted"></i>
+            </span>
+            
+            <button class="btn btn-link w-100 text-start text-decoration-none p-1 d-flex align-items-center criterio-toggle-btn" type="button" 
+                    onclick="event.stopPropagation(); toggleCriterioAccordion('${collapseId}')">
+              <div class="d-flex justify-content-between align-items-center w-100 me-2">
+                <span>
+                  <span class="badge bg-primary me-2">${criterio.peso || 0}%</span>
+                  <strong class="text-dark">${criterio.nombre || criterio.codigo}</strong>
+                </span>
+                <span class="d-flex align-items-center gap-1">
+                  <span class="badge ${tieneRangos ? 'bg-success' : 'bg-secondary'}" style="font-size: 0.75em;">${rangos.length} rangos</span>
+                  <i class="bi bi-chevron-right text-muted ms-1 criterio-chevron" 
+                     style="font-size: 0.8rem;" 
+                     title="Expandir/Contraer detalles"
+                     id="chevron-${collapseId}"></i>
+                </span>
+              </div>
+            </button>
+          </div>
+        </h2>
+        
+        <div id="${collapseId}" class="accordion-collapse collapse" data-bs-parent="">
+          <div class="accordion-body bg-light border-top px-3">
+            <div class="row mb-3">
+              <div class="col-md-4">
+                <label class="form-label small fw-bold">Nombre</label>
+                <input type="text" class="form-control form-control-sm" value="${criterio.nombre || ''}"
+                       onchange="actualizarCriterioLinea('${criterio.codigo}', 'nombre', this.value)">
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small fw-bold">Peso (%)</label>
+                <input type="number" class="form-control form-control-sm" value="${criterio.peso || 0}" min="0" max="100"
+                       onchange="actualizarCriterioLinea('${criterio.codigo}', 'peso', this.value)">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-bold">Descripción</label>
+                <input type="text" class="form-control form-control-sm" value="${criterio.descripcion || ''}"
+                       onchange="actualizarCriterioLinea('${criterio.codigo}', 'descripcion', this.value)">
+              </div>
+              <div class="col-md-2 d-flex align-items-end">
+                <button type="button" class="btn btn-outline-danger btn-sm w-100" onclick="eliminarCriterioLinea('${criterio.codigo}')">
+                  <i class="bi bi-trash me-1"></i>Eliminar
+                </button>
+              </div>
+            </div>
+            
+            <h6 class="small fw-bold text-muted"><i class="bi bi-rulers me-2"></i>Rangos de Puntuación</h6>
+            ${tieneRangos ? `
+              <div class="table-responsive bg-white rounded shadow-sm mb-2">
+                <table class="table table-sm table-bordered mb-0" style="font-size: 0.85rem;">
+                  <thead class="table-light">
+                    <tr>
+                      <th>Mínimo</th>
+                      <th>Máximo</th>
+                      <th>Puntos</th>
+                      <th>Descripción</th>
+                      <th class="text-center">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${rangos.map((r, ri) => `
+                      <tr>
+                        <td><input type="number" class="form-control form-control-sm border-0" value="${r.min}" 
+                                   onchange="actualizarRangoCriterio('${criterio.codigo}', ${ri}, 'min', this.value)"></td>
+                        <td><input type="number" class="form-control form-control-sm border-0" value="${r.max}"
+                                   onchange="actualizarRangoCriterio('${criterio.codigo}', ${ri}, 'max', this.value)"></td>
+                        <td><input type="number" class="form-control form-control-sm border-0" value="${r.puntos}"
+                                   onchange="actualizarRangoCriterio('${criterio.codigo}', ${ri}, 'puntos', this.value)"></td>
+                        <td><input type="text" class="form-control form-control-sm border-0" value="${r.descripcion || ''}"
+                                   onchange="actualizarRangoCriterio('${criterio.codigo}', ${ri}, 'descripcion', this.value)"></td>
+                        <td class="text-center">
+                          <button type="button" class="btn btn-link text-danger p-0" 
+                                  onclick="eliminarRangoCriterio('${criterio.codigo}', ${ri})">
+                            <i class="bi bi-trash"></i>
+                          </button>
+                        </td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            ` : `<p class="text-muted small mb-2">No hay rangos definidos.</p>`}
+            
+            <button class="btn btn-sm btn-outline-success" onclick="agregarRangoCriterio('${criterio.codigo}')">
+              <i class="bi bi-plus-lg me-1"></i>Agregar Rango
+            </button>
+          </div>
+        </div>
+      </div>
+    </li>
+  `;
+}
+
+/**
+ * Obtiene el índice global de un criterio por su código
+ */
+function getCriterioGlobalIndex(codigo) {
+  if (!configScoringLinea || !configScoringLinea.criterios) return -1;
+  const criterios = configScoringLinea.criterios;
+  if (Array.isArray(criterios)) {
+    return criterios.findIndex(c => c.codigo === codigo);
+  } else {
+    return Object.keys(criterios).indexOf(codigo);
+  }
+}
+
+/**
+ * Inicializa Sortable para las secciones
+ */
+function initSortableSecciones() {
+  const container = document.getElementById('seccionesContainer');
+  if (!container || typeof Sortable === 'undefined') return;
+
+  new Sortable(container, {
+    animation: 150,
+    handle: '.seccion-handle',
+    ghostClass: 'bg-primary-subtle',
+    onEnd: function (evt) {
+      actualizarOrdenSecciones();
+      markUnsavedChanges();
+    }
+  });
+}
+
+/**
+ * Inicializa Sortable para los criterios dentro de cada sección
+ */
+function initSortableCriterios() {
+  if (typeof Sortable === 'undefined') return;
+
+  document.querySelectorAll('.criterios-list').forEach(list => {
+    new Sortable(list, {
+      group: 'criterios', // Permite mover entre secciones
+      animation: 150,
+      handle: '.criterio-handle',
+      ghostClass: 'bg-warning-subtle',
+      onEnd: function (evt) {
+        const codigo = evt.item.dataset.codigo;
+        const nuevaSeccion = evt.to.dataset.seccion;
+
+        // Actualizar sección del criterio
+        actualizarSeccionCriterio(codigo, nuevaSeccion);
+
+        // Actualizar orden de todos los criterios
+        actualizarOrdenCriterios();
+      }
+    });
+  });
+}
+
+/**
+ * Actualiza el orden de las secciones basado en el DOM actual
+ */
+function actualizarOrdenSecciones() {
+  markUnsavedChanges();
+  const secciones = document.querySelectorAll('.seccion-card');
+  let ordenActual = 0;
+
+  secciones.forEach(card => {
+    const seccionNombre = card.dataset.seccion;
+    const lista = card.querySelector('.criterios-list');
+
+    const criterios = [];
+
+    // Agregar colores de sección al payload si el backend lo soporta (intento de persistencia)
+    // Nota: Si el backend ignora campos extra, esto solo funcionará en sesión actual
+    // O podemos intentar guardar en un criterio dummy 'config_meta'
+
+    if (lista) {
+      lista.querySelectorAll('.criterio-item').forEach(item => {
+        const codigo = item.dataset.codigo;
+        actualizarCriterioEnConfig(codigo, { orden: ordenActual++ });
+      });
+    }
+  });
+
+  console.log('📦 Orden de secciones actualizado');
+}
+
+/**
+ * Actualiza el orden de los criterios basado en el DOM actual
+ */
+function actualizarOrdenCriterios() {
+  markUnsavedChanges();
+  let ordenActual = 0;
+
+  document.querySelectorAll('.criterios-list').forEach(lista => {
+    lista.querySelectorAll('.criterio-item').forEach(item => {
+      const codigo = item.dataset.codigo;
+      actualizarCriterioEnConfig(codigo, { orden: ordenActual++ });
+    });
+  });
+
+  console.log('📋 Orden de criterios actualizado');
+}
+
+/**
+ * Actualiza la sección de un criterio
+ */
+function actualizarSeccionCriterio(codigo, nuevaSeccion) {
+  markUnsavedChanges();
+  actualizarCriterioEnConfig(codigo, { seccion: nuevaSeccion });
+  console.log(`📁 Criterio ${codigo} movido a sección "${nuevaSeccion}"`);
+}
+
+/**
+ * Actualiza propiedades de un criterio en la configuración
+ */
+function actualizarCriterioEnConfig(codigo, propiedades) {
+  markUnsavedChanges();
+  if (!configScoringLinea || !configScoringLinea.criterios) return;
+
+  const criterios = configScoringLinea.criterios;
+
+  if (Array.isArray(criterios)) {
+    const idx = criterios.findIndex(c => c.codigo === codigo);
+    if (idx !== -1) {
+      Object.assign(criterios[idx], propiedades);
+    }
+  } else { // Assuming it's an object if not an array
+    if (criterios[codigo]) {
+      Object.assign(criterios[codigo], propiedades);
+    }
+  }
+}
+
+/**
+ * Colapsa/expande una sección de forma robusta
+ */
+function toggleSeccion(seccionNombre, seccionId) {
+  seccionesColapsadas[seccionNombre] = !seccionesColapsadas[seccionNombre];
+
+  const bodyId = `body-${seccionId}`;
+  const iconId = `icon-${seccionId}`;
+
+  const body = document.getElementById(bodyId);
+  const icon = document.getElementById(iconId);
+
+  if (body) {
+    if (seccionesColapsadas[seccionNombre]) {
+      body.classList.add('d-none');
+    } else {
+      body.classList.remove('d-none');
+    }
+  }
+
+  if (icon) {
+    if (seccionesColapsadas[seccionNombre]) {
+      icon.className = 'bi bi-chevron-right me-2';
+    } else {
+      icon.className = 'bi bi-chevron-down me-2';
+    }
+  }
+}
+
+/**
+ * Muestra modal para agregar nueva sección con color
+ */
+function agregarSeccionModal() {
+  mostrarModalSeccion();
+}
+
+/**
+ * Muestra modal para editar sección existente
+ */
+function editarSeccion(seccionActual) {
+  const colorActual = customSectionColors[seccionActual] || SECCION_COLORS[seccionActual] || 'secondary';
+  mostrarModalSeccion(seccionActual, colorActual);
+}
+
+/**
+ * Función auxiliar para mostrar modal de sección (Crear/Editar)
+ */
+function mostrarModalSeccion(nombreActual = "", colorActual = "primary") {
+  // Crear modal dinámicamente si no existe
+  let modalEl = document.getElementById('seccionModal');
+  if (!modalEl) {
+    const modalHtml = `
+      <div class="modal fade" id="seccionModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="seccionModalTitle">Gestión de Sección</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <input type="hidden" id="seccionModalOldName">
+              <div class="mb-3">
+                <label for="seccionModalName" class="form-label">Nombre de la Sección</label>
+                <input type="text" class="form-control" id="seccionModalName" placeholder="Ej: Historial Crediticio">
+              </div>
+              <div class="mb-3">
+                <label for="seccionModalColor" class="form-label">Color del Tema</label>
+                <select class="form-select" id="seccionModalColor">
+                  ${AVAILABLE_COLORS.map(c => `<option value="${c.value}">${c.label}</option>`).join('')}
+                </select>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+              <button type="button" class="btn btn-primary" onclick="guardarSeccionModal()">Guardar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    modalEl = document.getElementById('seccionModal');
+  }
+
+  // Configurar modal
+  const title = document.getElementById('seccionModalTitle');
+  const nameInput = document.getElementById('seccionModalName');
+  const colorInput = document.getElementById('seccionModalColor');
+  const oldNameInput = document.getElementById('seccionModalOldName');
+
+  if (nombreActual) {
+    title.textContent = "Editar Sección";
+    nameInput.value = nombreActual;
+    colorInput.value = colorActual;
+    oldNameInput.value = nombreActual;
+  } else {
+    title.textContent = "Nueva Sección";
+    nameInput.value = "";
+    colorInput.value = "primary"; // Default
+    oldNameInput.value = "";
+  }
+
+  const modal = new bootstrap.Modal(modalEl);
+  modal.show();
+}
+
+/**
+ * Guarda cambios del modal de sección
+ */
+function guardarSeccionModal() {
+  const nameInput = document.getElementById('seccionModalName');
+  const colorInput = document.getElementById('seccionModalColor');
+  const oldNameInput = document.getElementById('seccionModalOldName');
+
+  const nombre = nameInput.value.trim();
+  const color = colorInput.value;
+  const oldNombre = oldNameInput.value;
+
+  if (!nombre) {
+    alert("El nombre es requerido");
+    return;
+  }
+
+  const modalEl = document.getElementById('seccionModal');
+  const modal = bootstrap.Modal.getInstance(modalEl);
+
+  if (oldNombre) {
+    // Editar existente
+    if (oldNombre !== nombre) {
+      renombrarSeccion(oldNombre, nombre);
+    }
+    // Actualizar color
+    customSectionColors[nombre] = color;
+    // Persistir si se renombra también
+    if (oldNombre !== nombre) {
+      delete customSectionColors[oldNombre];
+    }
+
+    // Actualizar UI
+    renderCriteriosLinea(configScoringLinea.criterios);
+    mostrarAlertaScoring("Sección actualizada", "success");
+
+  } else {
+    // Crear nueva
+    customSectionColors[nombre] = color;
+    agregarSeccion(nombre);
+  }
+
+  modal.hide();
+}
+
+/**
+ * Agrega una nueva sección vacía
+ */
+function agregarSeccion(nombre) {
+  // Verificar que no exista
+  if (!configScoringLinea) return;
+
+  const criterios = configScoringLinea.criterios || [];
+  const existe = (Array.isArray(criterios) ? criterios : Object.values(criterios))
+    .some(c => c.seccion === nombre);
+
+  if (existe || seccionesActivas.has(nombre)) {
+    mostrarAlertaScoring(`La sección "${nombre}" ya existe`, "warning");
+    return;
+  }
+
+  // Agregar a activas
+  seccionesActivas.add(nombre);
+
+  // Re-renderizar (la sección aparecerá cuando se mueva un criterio a ella)
+  mostrarAlertaScoring(`Sección "${nombre}" creada. Arrastra criterios para agregarlos.`, "success");
+
+  // Forzar re-render para mostrar sección vacía (opcional: agregar a estructura)
+  renderCriteriosLinea(configScoringLinea.criterios);
+}
+
+/**
+ * Muestra prompt para renombrar sección
+ */
+function editarSeccionNombre(seccionActual) {
+  const nuevoNombre = prompt(`Renombrar sección "${seccionActual}" a:`, seccionActual);
+  if (nuevoNombre && nuevoNombre.trim() && nuevoNombre !== seccionActual) {
+    renombrarSeccion(seccionActual, nuevoNombre.trim());
+  }
+}
+
+/**
+ * Renombra una sección actualizando todos sus criterios
+ */
+function renombrarSeccion(nombreViejo, nombreNuevo) {
+  markUnsavedChanges();
+  if (!configScoringLinea || !configScoringLinea.criterios) return;
+
+  const criterios = configScoringLinea.criterios;
+
+  if (Array.isArray(criterios)) {
+    criterios.forEach(c => {
+      if (c.seccion === nombreViejo) {
+        c.seccion = nombreNuevo;
+      }
+    });
+  } else {
+    Object.values(criterios).forEach(c => {
+      if (c.seccion === nombreViejo) {
+        c.seccion = nombreNuevo;
+      }
+    });
+  }
+
+  // Actualizar estado de colapso
+  if (seccionesColapsadas[nombreViejo] !== undefined) {
+    seccionesColapsadas[nombreNuevo] = seccionesColapsadas[nombreViejo];
+    delete seccionesColapsadas[nombreViejo];
+  }
+
+  // Actualizar set de activas
+  seccionesActivas.delete(nombreViejo);
+  seccionesActivas.add(nombreNuevo);
+
+  renderCriteriosLinea(configScoringLinea.criterios);
+  mostrarAlertaScoring(`Sección renombrada a "${nombreNuevo}"`, "success");
+}
+
+/**
+ * Elimina una sección moviendo sus criterios a "Sin Categoría"
+ */
+function eliminarSeccionLinea(seccionNombre) {
+  if (!confirm(`¿Eliminar la sección "${seccionNombre}"?\nLos criterios se moverán a "Sin Categoría".`)) {
+    return;
+  }
+  markUnsavedChanges();
+
+  if (!configScoringLinea || !configScoringLinea.criterios) return;
+
+  const criterios = configScoringLinea.criterios;
+
+  if (Array.isArray(criterios)) {
+    criterios.forEach(c => {
+      if (c.seccion === seccionNombre) {
+        c.seccion = "Sin Categoría";
+      }
+    });
+  } else {
+    Object.values(criterios).forEach(c => {
+      if (c.seccion === seccionNombre) {
+        c.seccion = "Sin Categoría";
+      }
+    });
+  }
+
+  // Actualizar set de activas
+  seccionesActivas.delete(seccionNombre);
+
+  delete seccionesColapsadas[seccionNombre];
+
+  renderCriteriosLinea(configScoringLinea.criterios);
+  mostrarAlertaScoring(`Sección "${seccionNombre}" eliminada`, "success");
+}
+
+/**
+ * Muestra modal para editar un criterio completo
+ */
+function editarCriterioModal(codigo) {
+  if (!configScoringLinea || !configScoringLinea.criterios) return;
+
+  const criterios = configScoringLinea.criterios;
+  let criterio = null;
+  let idx = -1;
+
+  if (Array.isArray(criterios)) {
+    idx = criterios.findIndex(c => c.codigo === codigo);
+    criterio = idx !== -1 ? criterios[idx] : null;
+  } else {
+    criterio = criterios[codigo];
+    idx = Object.keys(criterios).indexOf(codigo);
+  }
+
+  if (!criterio) {
+    mostrarAlertaScoring("Criterio no encontrado", "danger");
+    return;
+  }
+
+  // Usar el acordeón existente expandiéndolo
+  const accordionItem = document.querySelector(`[data-codigo="${codigo}"]`);
+  if (accordionItem) {
+    // Scroll al item
+    accordionItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // Flash visual
+    accordionItem.classList.add('border-primary');
+    setTimeout(() => accordionItem.classList.remove('border-primary'), 2000);
+  }
+
+  // Por ahora usar prompt simple para edición rápida
+  const nuevoNombre = prompt("Nombre del criterio:", criterio.nombre || "");
+  if (nuevoNombre === null) return;
+
+  const nuevoPeso = prompt("Peso (%):", criterio.peso || 0);
+  if (nuevoPeso === null) return;
+
+  const nuevaSeccion = prompt("Sección:", criterio.seccion || "Sin Categoría");
+  if (nuevaSeccion === null) return;
+
+  // Actualizar
+  actualizarCriterioEnConfig(codigo, {
+    nombre: nuevoNombre.trim() || criterio.nombre,
+    peso: parseFloat(nuevoPeso) || criterio.peso,
+    seccion: nuevaSeccion.trim() || "Sin Categoría"
+  });
+
+  renderCriteriosLinea(configScoringLinea.criterios);
+  mostrarAlertaScoring("Criterio actualizado", "success");
 }
 
 // ============================================================================
@@ -1356,7 +2227,7 @@ function mostrarAlertaScoring(mensaje, tipo = "info", duracion = 5000) {
   const alertId = "alert_" + Date.now();
   const alertHtml = `
         <div id="${alertId}" class="alert alert-${tipo} alert-dismissible fade show" role="alert">
-            ${mensaje}
+            <span class="pe-4">${mensaje}</span>
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     `;
@@ -1383,7 +2254,7 @@ function copiarConfiguracionModal() {
   console.log("📋 Abriendo modal copiar configuración...");
   console.log("📋 Línea seleccionada:", lineaSeleccionadaId, lineaSeleccionadaNombre);
   console.log("📋 Líneas disponibles:", lineasCreditoDisponibles.length);
-  
+
   if (lineasCreditoDisponibles.length < 2) {
     mostrarAlertaScoring("Necesita al menos 2 líneas de crédito", "warning");
     return;
@@ -1399,7 +2270,7 @@ function copiarConfiguracionModal() {
     try {
       const bsModal = bootstrap.Modal.getInstance(m);
       if (bsModal) bsModal.dispose();
-    } catch(e) {}
+    } catch (e) { }
     m.remove();
   });
 
@@ -1408,7 +2279,7 @@ function copiarConfiguracionModal() {
     .filter((l) => l.id !== lineaSeleccionadaId)
     .map((l) => `<option value="${l.id}">${l.nombre}</option>`)
     .join("");
-  
+
   console.log("📋 Opciones origen (excluye línea actual):", opcionesOrigen);
 
   const modalHtml = `
@@ -1456,7 +2327,7 @@ function copiarConfiguracionModal() {
       </div>
     </div>
   `;
-  
+
   document.body.insertAdjacentHTML("beforeend", modalHtml);
   const modal = document.getElementById("copiarConfigModal");
   new bootstrap.Modal(modal).show();
@@ -1539,38 +2410,107 @@ function getCSRFToken() {
  */
 function agregarCriterioLinea() {
   if (!configScoringLinea) return;
-  
+
   if (!configScoringLinea.criterios) {
     configScoringLinea.criterios = [];
   }
-  
+
+  // Lista de secciones disponibles
+  const seccionesArr = Array.from(seccionesActivas);
+
+  // Crear modal de selección con opciones de tipo y sección
+  const tempModalId = 'modalAgregarCriterio';
+  const modalHtml = `
+    <div class="modal fade" id="${tempModalId}" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+          <div class="modal-header bg-success text-white py-2">
+            <h6 class="modal-title"><i class="bi bi-plus-lg me-2"></i>Nuevo Criterio</h6>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label small fw-bold">Tipo de Criterio</label>
+              <select class="form-select form-select-sm" id="nuevoCriterioTipo">
+                <option value="simple">Simple (Numérico)</option>
+                <option value="composite">Compuesto (Múltiples factores)</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-bold">Sección</label>
+              <select class="form-select form-select-sm" id="nuevoCriterioSeccion">
+                ${seccionesArr.map(s => `<option value="${s}">${s}</option>`).join('')}
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-bold">Nombre</label>
+              <input type="text" class="form-control form-control-sm" id="nuevoCriterioNombre" value="Nuevo Criterio">
+            </div>
+          </div>
+          <div class="modal-footer p-1">
+            <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="button" class="btn btn-sm btn-success" onclick="confirmarAgregarCriterio('${tempModalId}')">Agregar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Remover modal anterior si existe
+  const oldModal = document.getElementById(tempModalId);
+  if (oldModal) oldModal.remove();
+
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+  new bootstrap.Modal(document.getElementById(tempModalId)).show();
+}
+
+/**
+ * Confirma la creación del criterio desde el modal
+ */
+function confirmarAgregarCriterio(modalId) {
+  const tipo = document.getElementById('nuevoCriterioTipo').value;
+  const seccion = document.getElementById('nuevoCriterioSeccion').value;
+  const nombre = document.getElementById('nuevoCriterioNombre').value;
+
+  // Cerrar modal
+  const modalEl = document.getElementById(modalId);
+  const modal = bootstrap.Modal.getInstance(modalEl);
+  modal.hide();
+
   const numCriterios = configScoringLinea.criterios.length;
-  
+
   configScoringLinea.criterios.push({
     codigo: `criterio_${Date.now()}`,
-    nombre: `Nuevo Criterio ${numCriterios + 1}`,
-    descripcion: "",
-    peso: 10,
-    tipo_campo: "numerico",
+    nombre: nombre || `Nuevo Criterio ${numCriterios + 1}`,
+    descripcion: tipo === 'composite' ? "Criterio compuesto" : "",
+    peso: 0,
+    tipo_campo: tipo === 'composite' ? "composite" : "numerico",
+    seccion: seccion,
     rangos: []
   });
-  
+
+  markUnsavedChanges();
   renderCriteriosLinea(configScoringLinea.criterios);
-  mostrarAlertaScoring("Criterio agregado. Recuerde guardar los cambios.", "info");
+  mostrarAlertaScoring(`Criterio "${nombre}" agregado a sección "${seccion}"`, "success");
 }
+
 
 /**
  * Actualiza un campo de criterio en memoria
  */
-function actualizarCriterioLinea(index, campo, valor) {
+function actualizarCriterioLinea(codigo, campo, valor) {
+  markUnsavedChanges();
   if (!configScoringLinea || !configScoringLinea.criterios) return;
-  
+
+  const index = configScoringLinea.criterios.findIndex(c => c.codigo === codigo);
+  if (index === -1) return;
+
   if (campo === 'peso') {
     valor = parseFloat(valor);
   }
-  
+
   configScoringLinea.criterios[index][campo] = valor;
-  
+
   // Re-renderizar para actualizar la suma de pesos
   if (campo === 'peso') {
     renderCriteriosLinea(configScoringLinea.criterios);
@@ -1580,11 +2520,15 @@ function actualizarCriterioLinea(index, campo, valor) {
 /**
  * Elimina un criterio de la línea
  */
-function eliminarCriterioLinea(index) {
+function eliminarCriterioLinea(codigo) {
   if (!configScoringLinea || !configScoringLinea.criterios) return;
-  
+
+  const index = configScoringLinea.criterios.findIndex(c => c.codigo === codigo);
+  if (index === -1) return;
+
   const criterio = configScoringLinea.criterios[index];
   if (confirm(`¿Está seguro de eliminar el criterio "${criterio.nombre}"?`)) {
+    markUnsavedChanges();
     configScoringLinea.criterios.splice(index, 1);
     renderCriteriosLinea(configScoringLinea.criterios);
     mostrarAlertaScoring("Criterio eliminado. Recuerde guardar los cambios.", "info");
@@ -1594,44 +2538,56 @@ function eliminarCriterioLinea(index) {
 /**
  * Agrega un rango a un criterio
  */
-function agregarRangoCriterio(criterioIndex) {
+function agregarRangoCriterio(codigo) {
   if (!configScoringLinea || !configScoringLinea.criterios) return;
-  
-  if (!configScoringLinea.criterios[criterioIndex].rangos) {
-    configScoringLinea.criterios[criterioIndex].rangos = [];
+
+  const index = configScoringLinea.criterios.findIndex(c => c.codigo === codigo);
+  if (index === -1) return;
+
+  if (!configScoringLinea.criterios[index].rangos) {
+    configScoringLinea.criterios[index].rangos = [];
   }
-  
-  configScoringLinea.criterios[criterioIndex].rangos.push({
+
+  configScoringLinea.criterios[index].rangos.push({
     min: 0,
     max: 100,
     puntos: 10,
     descripcion: "Nuevo rango"
   });
-  
+
+  markUnsavedChanges();
   renderCriteriosLinea(configScoringLinea.criterios);
 }
 
 /**
  * Actualiza un rango de criterio
  */
-function actualizarRangoCriterio(criterioIndex, rangoIndex, campo, valor) {
+function actualizarRangoCriterio(codigo, rangoIndex, campo, valor) {
+  markUnsavedChanges();
   if (!configScoringLinea || !configScoringLinea.criterios) return;
-  
+
+  const index = configScoringLinea.criterios.findIndex(c => c.codigo === codigo);
+  if (index === -1) return;
+
   if (campo === 'min' || campo === 'max' || campo === 'puntos') {
     valor = parseFloat(valor);
   }
-  
-  configScoringLinea.criterios[criterioIndex].rangos[rangoIndex][campo] = valor;
+
+  configScoringLinea.criterios[index].rangos[rangoIndex][campo] = valor;
 }
 
 /**
  * Elimina un rango de criterio
  */
-function eliminarRangoCriterio(criterioIndex, rangoIndex) {
+function eliminarRangoCriterio(codigo, rangoIndex) {
   if (!configScoringLinea || !configScoringLinea.criterios) return;
-  
+
+  const index = configScoringLinea.criterios.findIndex(c => c.codigo === codigo);
+  if (index === -1) return;
+
   if (confirm("¿Está seguro de eliminar este rango?")) {
-    configScoringLinea.criterios[criterioIndex].rangos.splice(rangoIndex, 1);
+    markUnsavedChanges();
+    configScoringLinea.criterios[index].rangos.splice(rangoIndex, 1);
     renderCriteriosLinea(configScoringLinea.criterios);
   }
 }
@@ -1641,7 +2597,8 @@ function eliminarRangoCriterio(criterioIndex, rangoIndex) {
  */
 function crearCriteriosPorDefecto() {
   if (!configScoringLinea) return;
-  
+  markUnsavedChanges();
+
   configScoringLinea.criterios = [
     {
       codigo: "edad",
@@ -1721,7 +2678,7 @@ function crearCriteriosPorDefecto() {
       ]
     }
   ];
-  
+
   renderCriteriosLinea(configScoringLinea.criterios);
   mostrarAlertaScoring("Criterios por defecto creados. Recuerde guardar los cambios.", "success");
 }
@@ -1734,16 +2691,16 @@ async function guardarCriteriosLinea() {
     mostrarAlertaScoring("No hay línea seleccionada", "warning");
     return;
   }
-  
+
   // Validar que los pesos sumen 100
   const criterios = configScoringLinea.criterios || [];
   const sumaPesos = criterios.reduce((sum, c) => sum + (parseFloat(c.peso) || 0), 0);
-  
+
   if (Math.abs(sumaPesos - 100) > 0.1) {
     mostrarAlertaScoring(`Los pesos deben sumar 100%. Actualmente suman ${sumaPesos.toFixed(1)}%`, "danger");
     return;
   }
-  
+
   try {
     const response = await fetch(
       `/api/scoring/linea/${lineaSeleccionadaId}/criterios`,

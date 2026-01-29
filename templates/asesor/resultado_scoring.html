@@ -122,12 +122,28 @@
                             </tr>
                         </thead>
                         <tbody>
-                            {% for criterio in evaluacion.criterios_evaluados %}
-                            <tr>
-                                <td>{{ criterio.nombre }}</td>
-                                <td>{{ criterio.valor }}</td>
-                                <td>{{ criterio.puntaje }}pts</td>
-                            </tr>
+                            <!-- Group by Section Implementation -->
+                            {% set current_section = namespace(name=None) %}
+                            {% for criterio in evaluacion.criterios_evaluados|sort(attribute='seccion') %}
+                                {% if criterio.seccion != current_section.name %}
+                                    {% set current_section.name = criterio.seccion %}
+                                    <tr class="table-light">
+                                        <td colspan="3" class="fw-bold text-uppercase small text-muted pt-3">
+                                            <i class="bi bi-layers me-1"></i> {{ criterio.seccion }}
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                                <tr>
+                                    <td class="ps-4 border-start border-3 border-{{ criterio.color_context if criterio.color_context else 'primary' }}">
+                                        {{ criterio.nombre }}
+                                    </td>
+                                    <td>{{ criterio.valor }}</td>
+                                    <td>
+                                        <span class="badge bg-light text-dark border">
+                                            {{ criterio.puntaje }} pts
+                                        </span>
+                                    </td>
+                                </tr>
                             {% endfor %}
                         </tbody>
                     </table>
